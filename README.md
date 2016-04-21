@@ -19,6 +19,4 @@ Thus I choose the elevation property to hold those infomations.
 
 satellite's elevation is set to: real_prn * 10000 + sv_sys * 1000 + used_in_fix * 100 + real_elevation
 
-and 
-
-satellite's prn is only a useless number.
+and satellite's prn is only a useless number.
