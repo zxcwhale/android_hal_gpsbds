@@ -1309,7 +1309,7 @@ const struct hw_module_t HAL_MODULE_INFO_SYM = {
     .version_major = 2,
     .version_minor = 1,
     .id = GPS_HARDWARE_MODULE_ID,
-    .name = "CASIC GNSS Module",
+    .name = "HZZKW GNSS Module",
     .author = "Jarod Lee",
     .methods = &gps_module_methods,
 };
