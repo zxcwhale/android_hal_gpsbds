@@ -15,7 +15,7 @@ As location service only support prn from 1 to 32, that's only for gps system.
 
 To support bds satellites, we must pack more infomations, like satellite's system (gps or bds) etc.
 
-Thus I choose the elevation property to hold those infomations.
+And I choose the satellite's elevation property to hold those infomations.
 
 satellite's elevation is set to: real_prn * 10000 + sv_sys * 1000 + used_in_fix * 100 + real_elevation
 
@@ -57,3 +57,6 @@ public void onGpsStatusChanged(int i) {
 		else
 			sate.inUse = false;
 }
+
+
+This an ugly way of making support for both gps and bds, but it's simply, and you don't have to modify lots of jni, java files in various folders.
