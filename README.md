@@ -24,6 +24,7 @@ and satellite's prn is only a useless number.
 In an java app, the parse code will be like this
 
 @Override
+
 public void onGpsStatusChanged(int i) {
 
 	GpsStatus status=lm.getGpsStatus(null);
