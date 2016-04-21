@@ -1,4 +1,4 @@
-# android_gpsbd
+# android_hal_gpsbds
 An android hal driver, support for both gps and bds satellites system.
 
 Mainly support for android4.x.
