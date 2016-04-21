@@ -22,15 +22,6 @@
  * which is itself called from android_location_GpsLocationProvider.cpp
  */
 
-/*
-2014-12-16: Jarod Lee add gps_status_callback 
-    In gps_thread, CMD_START, report GPS_STATUS_SESSION_BEGIN
-    In gps_thread, CMD_STOP, report GPS_STATUS_SESSION_END
-*/
-/*
-2014-12-19: Jarod Lee update location only after received GGA, version: 1.3
-*/
-
 #include <errno.h>
 #include <pthread.h>
 #include <fcntl.h>
