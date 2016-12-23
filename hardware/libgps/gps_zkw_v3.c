@@ -32,7 +32,7 @@
 #include <math.h>
 #include <time.h>
 
-#define  LOG_TAG  "gps_zkw_libgps"
+#define  LOG_TAG  "gps_zkw"
 #include <cutils/log.h>
 #include <cutils/sockets.h>
 #include <hardware/gps.h>
@@ -41,25 +41,25 @@
 /* the name of the qemud-controlled socket */
 #define QEMU_CHANNEL_NAME  "gps"
 
-#define GPS_DEBUG  0
+#define GPS_DEBUG  1
+#define NMEA_DEBUG 0
 #define GPS_SV_INCLUDE 1
 
-#define SV_TYPE_GPS 0
-#define SV_TYPE_BD  1
-#define SV_TYPE_GLN 2
-#define SV_TYPE_ALIEN 3
+typedef enum {
+	GPS_SV = 0,
+	BDS_SV = 1,
+	GLONASS_SV = 2
+}SV_TYPE;
 
-static int sv_type = SV_TYPE_GPS;
-static int sv_num = 0;
 
-#define SV_PLUS_BD 200
-#define SV_PLUS_GLN 64
+#define PRN_PLUS_BDS 200
+#define PRN_PLUS_GLN 64
 
 #define GNSS_TTY "/dev/ttySAC0"
 #define GNSS_SPEED B9600
 
 #if GPS_DEBUG
-#  define  D(...)   LOGD(__VA_ARGS__)
+#  define  D(f, ...)   LOGD("%s: line = %d, " f, __func__, __LINE__, ##__VA_ARGS__)
 #else
 #  define  D(...)   ((void)0)
 #endif
@@ -195,7 +195,7 @@ str2float( const char*  p, const char*  end )
 /*****************************************************************/
 
 #define  NMEA_MAX_SIZE  83
-
+#define  MAX_SV_PRN 256
 typedef struct {
     int     pos;
     int     overflow;
@@ -207,7 +207,9 @@ typedef struct {
     GpsStatus status;
 #if GPS_SV_INCLUDE
     GpsSvStatus  sv_status; 
+	int		sv_num;
     int     sv_status_changed;
+	int		sv_used_in_fix[MAX_SV_PRN];
 #endif
     gps_location_callback  callback;
     gps_nmea_callback nmea_callback;
@@ -270,7 +272,7 @@ nmea_reader_set_nmea_callback( NmeaReader* r, gps_nmea_callback cb)
 {
     r->nmea_callback = cb;
     if(cb != NULL) {
-        D("%s: sending nmea to new callback", __FUNCTION__);
+        D("Sending nmea to new callback");
     }
 }
 
@@ -279,7 +281,7 @@ nmea_reader_set_status_callback( NmeaReader* r, gps_status_callback cb)
 {
     r->status_callback = cb;
     if(cb != NULL) {
-        D("%s: sending status to new callback", __FUNCTION__);
+        D("Sending status to new callback");
     }
 }
 
@@ -288,7 +290,7 @@ nmea_reader_set_callback( NmeaReader*  r, gps_location_callback  cb )
 {
     r->callback = cb;
     if (cb != NULL && r->fix.flags != 0) {
-        D("%s: sending latest fix to new callback", __FUNCTION__);
+        D("Sending latest fix to new callback");
         r->callback( &r->fix );
         r->fix.flags = 0;
     }
@@ -300,7 +302,7 @@ nmea_reader_set_sv_callback( NmeaReader*  r, gps_sv_status_callback  cb )
 {
     r->sv_callback = cb;
     if (cb != NULL) {
-        D("%s: sending latest sv info to new callback", __FUNCTION__);
+        D("Sending latest sv info to new callback");
     }
 }
 #endif
@@ -374,7 +376,7 @@ convert_from_hhmm( Token  tok )
 {
     double  val     = str2float(tok.p, tok.end);
     int     degrees = (int)(floor(val) / 100);
-    double  minutes = val - degrees*100.;
+    double  minutes = val - degrees * 100.;
     double  dcoord  = degrees + minutes / 60.0;
     return dcoord;
 }
@@ -483,74 +485,32 @@ nmea_reader_update_speed( NmeaReader*  r,
 }
 
 static int
-nmea_reader_sv_type(const char *p) { // get sv type from sentence's start string
-    char chSvType[3];
-    memcpy(chSvType,p,2);
-    chSvType[2]=0;
-    if(!strcmp(chSvType,"BD"))
-        return SV_TYPE_BD;
-    else if(!strcmp(chSvType,"GL"))
-        return SV_TYPE_GLN;
-    return SV_TYPE_GPS;
-}
-
-static int
-prn_sv_type(int prn) {       // get sv type from prn
-    if(prn>SV_PLUS_BD)
-        return SV_TYPE_BD;
-    else if(prn>SV_PLUS_GLN)
-        return SV_TYPE_GLN;
-    return SV_TYPE_GPS;
-}
-
-static int
-prn_add_plus(int prn, int sysType) {    // add prn plus
-    if (sysType == SV_TYPE_BD && prn < SV_PLUS_BD)    
-        prn += SV_PLUS_BD;
-    else if(sysType == SV_TYPE_GLN && prn < SV_PLUS_GLN)
-        prn += SV_PLUS_GLN;    
+add_prn_plus(int prn, SV_TYPE sv_type) {    // add prn plus
+    if (sv_type == BDS_SV && prn < PRN_PLUS_BDS)    
+        prn += PRN_PLUS_BDS;
+    else if(sv_type == GLONASS_SV && prn < PRN_PLUS_GLN)
+        prn += PRN_PLUS_GLN;    
     return prn;
 }
 
-static int
-prn_remove_plus(int prn) {  // remove prn plus
-    if (prn > SV_PLUS_BD)    
-        prn -= SV_PLUS_BD;
-    else if(prn > SV_PLUS_GLN)
-        prn -= SV_PLUS_GLN;    
-    return prn;
-}
 
 static void
-encode_sv_status(GpsSvStatus*  status) {    // encode prn, sv sys type and used in fix infomations in elevation 
-    // elevation=real_prn*10000+sv_sys*1000+used_in_fix*100+elevation: 31-1-1-90.00
-    // real_prn: 0-99
-    // sv_sys: 0-gps, 1-bd, 2-gln
-    // used_in_fix: 0-not used, 1-used
-    // elevation: 0-90 degree
+nmea_reader_encode_sv_status(NmeaReader*  r) {    // encode used_in_fix flag
     int i;
-    if ( status->num_svs > GPS_MAX_SVS)     // if num_svs is larger than GPS_MAX_SVS, set num_svs to GPS_MAX_SVS
-        status->num_svs = GPS_MAX_SVS;      // this will prevent overflow crash
-    for ( i = 0; i < status->num_svs; ++i)
+
+	// if num_svs is larger than GPS_MAX_SVS, set num_svs to GPS_MAX_SVS
+    if ( r->sv_status.num_svs > GPS_MAX_SVS)     
+        r->sv_status.num_svs = GPS_MAX_SVS;      // this will prevent overflow crash
+    for ( i = 0; i < r->sv_status.num_svs; ++i)
     {
-        GpsSvInfo *info = &(status->sv_list[i]);
-        int st = prn_sv_type(info->prn);            // get sv type from prn
-        int real_prn = prn_remove_plus(info->prn);    // get real prn
-        int used_in_fix = 0;
-        if(real_prn > 0){   // check if prn is used in fix
-            int prn_shift = (1 << (real_prn - 1));
-            if(st == SV_TYPE_GPS)
-                used_in_fix = ((status->used_in_fix_mask & prn_shift) != 0);
-            else if(st == SV_TYPE_GLN)
-                used_in_fix = ((status->used_in_fix_mask_gln & prn_shift) != 0);
-            else if(st == SV_TYPE_BD)
-                used_in_fix = ((status->used_in_fix_mask_bd & prn_shift) != 0);
-        }
-        info->elevation = real_prn * 10000 + st * 1000 + used_in_fix * 100 + info->elevation;   // encode infomation
-        info->prn = i + 1;  // change prn to index + 1, because in GpsStatus.java, SatelliteList's prn are fixed to 1-32
+        GpsSvInfo *info = &(r->sv_status.sv_list[i]);
+		int prn = info->prn;
+		info->azimuth = (int)info->azimuth;	
+		if (r->sv_used_in_fix[prn]) {
+			info->azimuth += 720; 
+		}
     }
 }
-
 
 static void
 nmea_reader_parse( NmeaReader*  r )
@@ -560,7 +520,7 @@ nmea_reader_parse( NmeaReader*  r )
     */
     NmeaTokenizer  tzer[1];
     Token          tok;
-    bool            isGGA = false;
+	int			   sv_type;
 
     D("Received: '%.*s'", r->pos, r->in);
     if (r->pos < 9) {
@@ -569,7 +529,7 @@ nmea_reader_parse( NmeaReader*  r )
     }
 
     nmea_tokenizer_init(tzer, r->in, r->in + r->pos);
-#if GPS_DEBUG
+#if NMEA_DEBUG
     {
         int  n;
         D("Found %d tokens", tzer->count);
@@ -586,7 +546,18 @@ nmea_reader_parse( NmeaReader*  r )
         return;
     }    
 
-    sv_type = nmea_reader_sv_type(tok.p); // get sentenc's sv type
+	if (memcmp(tok.p, "BD", 2) == 0) {
+		sv_type = BDS_SV;
+		D("BDS satellites");
+	}
+	else if (memcmp(tok.p, "GL", 2) == 0 ) {
+		sv_type = GLONASS_SV;
+		D("GLONASS satellites");
+	}
+	else {
+		sv_type = GPS_SV;
+		D("GPS satellites");
+	}	
     // ignore first two characters.
     tok.p += 2;
     if ( !memcmp(tok.p, "GGA", 3) ) {
@@ -608,12 +579,7 @@ nmea_reader_parse( NmeaReader*  r )
                                           tok_longitudeHemi.p[0]);
             nmea_reader_update_altitude(r, tok_altitude, tok_altitudeUnits);
         }
-        isGGA = true;
-    
-#if GPS_SV_INCLUDE
-        r->sv_status_changed = 1;   // update sv status when receive gps, that's last sv status.
-#endif
-
+		memset(r->sv_used_in_fix, 0, sizeof(MAX_SV_PRN));	
     } else if ( !memcmp(tok.p, "GSA", 3) ) {
 #if GPS_SV_INCLUDE
 
@@ -626,39 +592,12 @@ nmea_reader_parse( NmeaReader*  r )
 
             nmea_reader_update_accuracy(r, tok_accuracy);   // pdop
 
-            Token  tok_precheck  = nmea_tokenizer_get(tzer, 3);
-            int pre_checkprn = str2int(tok_precheck.p, tok_precheck.end);
-            if (pre_checkprn > 0 && sv_type == SV_TYPE_GPS)  // pre check prn's sv sys
-                sv_type = prn_sv_type(pre_checkprn);
-
-            // init prn fix mask
-            if (sv_type == SV_TYPE_GPS)
-                r->sv_status.used_in_fix_mask = 0ul;
-            else if (sv_type == SV_TYPE_GLN)
-                r->sv_status.used_in_fix_mask_gln = 0ul;
-            else if (sv_type == SV_TYPE_BD)
-                r->sv_status.used_in_fix_mask_bd = 0ul;
-
             for (i = 3; i <= 14; ++i) {
 
                 Token  tok_prn  = nmea_tokenizer_get(tzer, i);
-                int prn = str2int(tok_prn.p, tok_prn.end);
-                prn = prn_remove_plus(prn); // remove prn plus
-
-                D("%s: prn is %d", __FUNCTION__, r->sv_status.used_in_fix_mask);
-                if (prn > 0) {   // set used in fix mask
-                    //r->sv_status.used_in_fix_mask |= (1ul << (32 - prn));
-
-                    if (sv_type == SV_TYPE_GPS)
-                        r->sv_status.used_in_fix_mask |= (1ul << (prn-1));
-                    else if (sv_type == SV_TYPE_GLN)
-                        r->sv_status.used_in_fix_mask_gln |= (1ul << (prn-1));
-                    else if (sv_type == SV_TYPE_BD)
-                        r->sv_status.used_in_fix_mask_bd |= (1ul << (prn-1));
-                    //r->sv_status.used_in_fix_mask |= (1ul << (prn-1));
-                    //r->sv_status_changed = 1;
-                    D("%s: fix mask is 0x%08X", __FUNCTION__, r->sv_status.used_in_fix_mask);
-                }
+                int prn = add_prn_plus(str2int(tok_prn.p, tok_prn.end), sv_type);
+				if (prn > 0 && prn < MAX_SV_PRN)
+					r->sv_used_in_fix[prn] = 1;
             }
             
         }
@@ -688,6 +627,10 @@ nmea_reader_parse( NmeaReader*  r )
             nmea_reader_update_bearing( r, tok_bearing );
             nmea_reader_update_speed  ( r, tok_speed );
         }
+#if GPS_SV_INCLUDE
+        r->sv_status_changed = 1;   // update sv status when receive gps, that's last sv status.
+#endif
+
     } else if ( !memcmp(tok.p, "GSV", 3) ) {
 #if GPS_SV_INCLUDE
         Token  tok_noSatellites  = nmea_tokenizer_get(tzer, 3);
@@ -705,16 +648,14 @@ nmea_reader_parse( NmeaReader*  r )
             
 
             if (sentence == 1) {
-                //r->sv_status_changed = 0;
-                //r->sv_status.num_svs = 0;
-                sv_num=0;
+                r->sv_num = 0;
             }
 
             curr = r->sv_status.num_svs;
 
             i = 0;
             // max 4 group sv info in one sentence
-            while (i < 4 && sv_num < noSatellites){
+            while (i < 4 && r->sv_num < noSatellites){
 
                 Token  tok_prn = nmea_tokenizer_get(tzer, i * 4 + 4);
                 Token  tok_elevation = nmea_tokenizer_get(tzer, i * 4 + 5);
@@ -722,24 +663,25 @@ nmea_reader_parse( NmeaReader*  r )
                 Token  tok_snr = nmea_tokenizer_get(tzer, i * 4 + 7);
 
                 if (curr >= 0 && curr < GPS_MAX_SVS) {  // prevent from overflow
-                    r->sv_status.sv_list[curr].prn = prn_add_plus(str2int(tok_prn.p, tok_prn.end), sv_type);
+                    r->sv_status.sv_list[curr].prn = add_prn_plus(str2int(tok_prn.p, tok_prn.end), sv_type);
                     r->sv_status.sv_list[curr].elevation = str2float(tok_elevation.p, tok_elevation.end);
                     r->sv_status.sv_list[curr].azimuth = str2float(tok_azimuth.p, tok_azimuth.end);
                     r->sv_status.sv_list[curr].snr = str2float(tok_snr.p, tok_snr.end);
                 }
                 r->sv_status.num_svs += 1;
-                sv_num += 1;
+                r->sv_num += 1;
 
                 curr += 1;
 
                 i += 1;
             }
-
+			/*
             if (sentence == totalSentences) {
                 //r->sv_status_changed = 1;
             }
+			*/
         
-			D("%s: GSV message with total satellites %d", __FUNCTION__, noSatellites);   
+			D("GSV message with total satellites %d", noSatellites);   
         
 		}
   //       else if (noSatellites == 0) { 
@@ -769,6 +711,7 @@ nmea_reader_parse( NmeaReader*  r )
         char   temp[256];
         char*  p   = temp;
         char*  end = p + sizeof(temp);
+		time_t time;
         struct tm   utc;
 
         p += snprintf( p, end-p, "sending fix" );
@@ -787,13 +730,14 @@ nmea_reader_parse( NmeaReader*  r )
         if (r->fix.flags & GPS_LOCATION_HAS_ACCURACY) {
             p += snprintf(p,end-p, " accuracy=%g", r->fix.accuracy);
         }
-        gmtime_r( (time_t*) &r->fix.timestamp, &utc );
-        p += snprintf(p, end-p, " time=%s", asctime( &utc ) );
+		
+		time = r->fix.timestamp / 1000;	
+        gmtime_r( &time, &utc );
+        p += snprintf(p, end-p, " time=%s", asctime( &utc ));
         D("%s", temp);
 #endif
         if (r->callback) {
-            if (isGGA)
-                r->callback( &r->fix );
+			r->callback( &r->fix );
             r->fix.flags = 0;
         }
         else {
@@ -806,23 +750,28 @@ nmea_reader_parse( NmeaReader*  r )
     }
 #if GPS_SV_INCLUDE
     if ( r->sv_status_changed == 1 ) {
-        if (r->sv_callback) {            
-            encode_sv_status(&r->sv_status);            
-            r->sv_callback(&r->sv_status);
-        }
-        r->sv_status.used_in_fix_mask = 0ul;
-        r->sv_status.used_in_fix_mask_gln = 0ul;
-        r->sv_status.used_in_fix_mask_bd = 0ul;
         r->sv_status_changed = 0;
-        r->sv_status.num_svs = 0;
-    }
-    else{
-        D("no sv callback, keeping data until needed !");
+        if (r->sv_callback) {            
+            nmea_reader_encode_sv_status(r);            
+            r->sv_callback(&r->sv_status);
+
+			r->sv_status.num_svs = 0;
+			memset(r->sv_used_in_fix, 0, sizeof( MAX_SV_PRN ));	
+        }
+		else{
+			D("no sv callback, keeping data until needed !");
+		}
     }
 #endif
 }
-
-
+/*
+static GpsUtcTime get_system_timestamp() {
+	struct timeval tp;
+	gettimeofday(&tp, NULL);    // get current time
+	GpsUtcTime t = tp.tv_sec * 1000 + tp.tv_usec / 1000;
+	return t;
+}
+*/
 static void
 nmea_reader_addc( NmeaReader*  r, int  c )
 {
@@ -842,6 +791,12 @@ nmea_reader_addc( NmeaReader*  r, int  c )
 
     if (c == '\n') {
         nmea_reader_parse( r );
+		if (r->nmea_callback) {
+			r->nmea_callback( r->fix.timestamp, r->in, r->pos );
+		}
+		else {
+			D("No nmea callback");
+		}
         r->pos = 0;
     }
 }
@@ -881,9 +836,6 @@ static char * gps_idle_on   = "$PCGDC,IDLEON,1,*1\r\n";
 static char * gps_idle_off  = "$PCGDC,IDLEOFF,1,*1\r\n";
 #endif
 
-
-
-
 static void
 gps_state_done( GpsState*  s )
 {
@@ -912,12 +864,12 @@ gps_state_start( GpsState*  s )
     while (ret < 0 && errno == EINTR);
 
     if (ret != 1)
-        D("%s: could not send CMD_START command: ret=%d: %s",
-          __FUNCTION__, ret, strerror(errno));
+        D("Could not send CMD_START command: ret=%d: %s",
+          ret, strerror(errno));
 
 #if GPS_SV_INCLUDE
     write(s->fd,gps_idle_off,strlen(gps_idle_off));
-    LOGD("%s",gps_idle_off);
+    D("%s",gps_idle_off);
 #endif
 }
 
@@ -932,8 +884,8 @@ gps_state_stop( GpsState*  s )
     while (ret < 0 && errno == EINTR);
 
     if (ret != 1)
-        D("%s: could not send CMD_STOP command: ret=%d: %s",
-          __FUNCTION__, ret, strerror(errno));
+        D("Could not send CMD_STOP command: ret=%d: %s",
+          ret, strerror(errno));
 
 #if GPS_SV_INCLUDE
     write(s->fd,gps_idle_on,strlen(gps_idle_on));
@@ -1002,13 +954,13 @@ gps_state_thread( void*  arg )
         nevents = epoll_wait( epoll_fd, events, 2, -1 );
         if (nevents < 0) {
             if (errno != EINTR)
-                LOGE("epoll_wait() unexpected error: %s", strerror(errno));
+                D("epoll_wait() unexpected error: %s", strerror(errno));
             continue;
         }
         D("gps thread received %d events", nevents);
         for (ne = 0; ne < nevents; ne++) {
             if ((events[ne].events & (EPOLLERR|EPOLLHUP)) != 0) {
-                LOGE("EPOLLERR or EPOLLHUP after epoll_wait() !?");
+                D("EPOLLERR or EPOLLHUP after epoll_wait() !?");
 				return;
             }
             if ((events[ne].events & EPOLLIN) != 0) {
@@ -1053,7 +1005,7 @@ gps_state_thread( void*  arg )
                             }
                             nmea_reader_set_nmea_callback( reader, NULL );
                             nmea_reader_set_callback( reader, NULL );
-                            nmea_reader_set_status_callback(reader, NULL);
+                            nmea_reader_set_status_callback( reader, NULL );
 #if GPS_SV_INCLUDE
                             nmea_reader_set_sv_callback( reader, NULL );
 #endif
@@ -1063,28 +1015,21 @@ gps_state_thread( void*  arg )
                 }
                 else if (fd == gps_fd)
                 {
-                    char  buff[64];
+                    char  buff[128];
                     D("gps fd event");
                     for (;;) {
                         int  nn, ret;
 
-                        ret = read( fd, buff, sizeof(buff) );
+                        ret = read( fd, buff, sizeof( buff ) );
                         if (ret < 0) {
                             if (errno == EINTR)
                                 continue;
                             if (errno != EWOULDBLOCK)
-                                LOGE("error while reading from gps daemon socket: %s:", strerror(errno));
+                                D("error while reading from gps daemon socket: %s:", strerror(errno));
                             break;
                         }
 
-                        struct timeval tp;
-                        gettimeofday(&tp, NULL);    // get current time
-
-                        if ( ret > 0 && reader->nmea_callback) {
-                            GpsUtcTime t = tp.tv_sec * 1000 + tp.tv_usec / 1000;
-                            reader->nmea_callback(t, buff, ret);
-                        }
-                        D("received %d bytes: %.*s", ret, ret, buff);
+                        D("gps fd received: %.*s bytes: %d", ret, buff, ret);
                         for (nn = 0; nn < ret; nn++)
                             nmea_reader_addc( reader, buff[nn] );
                     }
@@ -1092,7 +1037,7 @@ gps_state_thread( void*  arg )
                 }
                 else
                 {
-                    LOGE("epoll_wait() returned unkown fd %d ?", fd);
+                    D("epoll_wait() returned unkown fd %d ?", fd);
                 }
             }
         }
@@ -1103,7 +1048,7 @@ gps_state_thread( void*  arg )
 
 // open tty
 static void
-gps_state_init( GpsState*  state, GpsCallbacks* callbacks )
+gps_state_init( GpsState*  state)
 {
 	struct termios termios;
 
@@ -1135,18 +1080,18 @@ gps_state_init( GpsState*  state, GpsCallbacks* callbacks )
     D("gps will read from %s", state->device);
 
     if ( socketpair( AF_LOCAL, SOCK_STREAM, 0, state->control ) < 0 ) {
-        LOGE("could not create thread control socket pair: %s", strerror(errno));
+        D("could not create thread control socket pair: %s", strerror(errno));
         goto Fail;
     }
 
-    state->thread = callbacks->create_thread_cb( "gps_state_thread", gps_state_thread, state );    
+    state->thread = state->callbacks.create_thread_cb( "gps_state_thread", gps_state_thread, state );    
 
     if ( !state->thread ) {
-        LOGE("could not create gps thread: %s", strerror(errno));
+        D("could not create gps thread: %s", strerror(errno));
         goto Fail;
     }
 
-    state->callbacks = *callbacks;
+   // state->callbacks = *callbacks;
 
     D("gps state initialized");
     return;
@@ -1169,9 +1114,9 @@ static int
 zkw_gps_init(GpsCallbacks* callbacks)
 {
     GpsState*  s = _gps_state;
-
+    s->callbacks = *callbacks;
     if (!s->init)
-        gps_state_init(s, callbacks);
+        gps_state_init(s);
 
     if (s->fd < 0)
         return -1;
@@ -1192,7 +1137,7 @@ static void gps_hardware_power( int state )
 {
     int fd = open( "/proc/gps", O_RDWR );
     if ( fd <= 0 ){
-        LOGD( "^_^ sunxi_gps gps open faild, errno %d\r\n", errno );
+        D( "/proc/gps open faild, errno %d\r\n", errno );
         return;
     }
     if ( state ){
@@ -1249,12 +1194,15 @@ zkw_gps_inject_location(double latitude, double longitude, float accuracy)
 static void
 zkw_gps_delete_aiding_data(GpsAidingData flags)
 {
+	return;
 }
 
-static int zkw_gps_set_position_mode(GpsPositionMode mode, int fix_frequency)
+
+static int 
+zkw_gps_set_position_mode(GpsPositionMode mode, GpsPositionRecurrence recurrence,
+             uint32_t min_interval, uint32_t preferred_accuracy, uint32_t preferred_time)
 {
-    // FIXME - support fix_frequency
-    return 0;
+ return 0;
 }
 
 static const void*
@@ -1265,19 +1213,19 @@ zkw_gps_get_extension(const char* name)
 }
 
 static const GpsInterface  zkwGpsInterface = {
-    sizeof(GpsInterface),
-    zkw_gps_init,
-    zkw_gps_start,
-    zkw_gps_stop,
-    zkw_gps_cleanup,
-    zkw_gps_inject_time,
-    zkw_gps_inject_location,
-    zkw_gps_delete_aiding_data,
-    zkw_gps_set_position_mode,
-    zkw_gps_get_extension,
+    .size  = sizeof(GpsInterface),
+    .init  = zkw_gps_init,
+    .start = zkw_gps_start,
+    .stop  = zkw_gps_stop,
+    .cleanup = zkw_gps_cleanup,
+    .inject_time=zkw_gps_inject_time,
+    .inject_location=zkw_gps_inject_location,
+    .delete_aiding_data=zkw_gps_delete_aiding_data,
+    .set_position_mode=zkw_gps_set_position_mode,
+    .get_extension=zkw_gps_get_extension,
 };
 
-const GpsInterface* gps__get_gps_interface(struct gps_device_t* dev)
+static const GpsInterface* get_gps_interface()
 {
     return &zkwGpsInterface;
 }
@@ -1289,12 +1237,13 @@ static int open_gps(const struct hw_module_t* module, char const* name,
     struct gps_device_t *dev = malloc(sizeof(struct gps_device_t));
     memset(dev, 0, sizeof(*dev));
 
+	D("Zkw hal driver, version=%d.%d", module->version_major, module->version_minor); 
     dev->common.tag = HARDWARE_DEVICE_TAG;
     dev->common.version = 0;
     dev->common.module = (struct hw_module_t*)module;
-    dev->get_gps_interface = gps__get_gps_interface;
-	_gps_state->init = 0;
-
+    dev->get_gps_interface = get_gps_interface;
+	//_gps_state->init = 0;
+	D("Zkw hal driver opend");
     *device = (struct hw_device_t*)dev;
     return 0;
 }
@@ -1304,12 +1253,12 @@ static struct hw_module_methods_t gps_module_methods = {
     .open = open_gps
 };
 
-const struct hw_module_t HAL_MODULE_INFO_SYM = {
+struct hw_module_t HAL_MODULE_INFO_SYM = {
     .tag = HARDWARE_MODULE_TAG,
-    .version_major = 2,
-    .version_minor = 1,
-    .id = GPS_HARDWARE_MODULE_ID,
-    .name = "HZZKW GNSS Module",
-    .author = "Jarod Lee",
-    .methods = &gps_module_methods,
+    .version_major = 3,
+    .version_minor = 13,
+    .id            = GPS_HARDWARE_MODULE_ID,
+    .name          = "HZZKW GNSS Module",
+    .author        = "Jarod Lee",
+    .methods       = &gps_module_methods,
 };
