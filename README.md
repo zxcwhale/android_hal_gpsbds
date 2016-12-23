@@ -22,3 +22,6 @@ If the satellite is used in fix, it's azimuth will plus 720, else nothing change
 And when the LocationAPI want the satellite's status, if it's azimuth if bigger than 720, then it's used in fix, else it's not. 
 
 As we do all the things in android's hal(parse nmea and conceal satellites's in_use_fix_flag) and framework(reveal satellites's in_use_fix_flag and restore azimuth to normal), so any 3rd party application can work with it.
+
+How to use
+First thing of first, change /dev/ttySAC0 to your tty. 
