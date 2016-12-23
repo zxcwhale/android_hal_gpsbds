@@ -1,7 +1,7 @@
 # android_hal_gpsbds
 An android hal driver, support for both gps and bds satellites system.
 
-Mainly support for android4.x and 5.x
+Build and tested on android4.x.
 
 Files:
 
