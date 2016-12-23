@@ -1,62 +1,24 @@
 # android_hal_gpsbds
 An android hal driver, support for both gps and bds satellites system.
 
-Mainly support for android4.x.
+Mainly support for android4.x and 5.x
 
 Files:
 
-/hardware/libhardware/include/hardware/gps.h
-
-/hardware/libgps/gps_zkw.c
-
+/hardware/libgps/gps_zkw_v3.c
 /hardware/libgps/android.mk
+/frameworks/base/location/java/android/locaton/GpsStatus.java
 
-As location service only support prn from 1 to 32, that's only for gps system. 
+As android's original location service only support prn from 1 to 32(for it's use an int32 to hold all the satellites's in_use_fix_flag), that's only enough for gps system. 
 
-To support bds satellites, we must pack more infomations, like satellite's system (gps or bds) etc.
+To support bds system, we need something more tricky.
 
-And I choose the satellite's elevation property to hold those infomations.
+As satellite's azimuth is always in range [0, 360), but with a float type, that's quite enough to hold something more.
 
-satellite's elevation is set to: real_prn * 10000 + sv_sys * 1000 + used_in_fix * 100 + real_elevation
+So I add in_use_fix_flag to azimuth.
 
-and satellite's prn is only a useless number.
+If the satellite is used in fix, it's azimuth will plus 720, else nothing changed.
 
-In an java app, the parse code will be like this
+And when the LocationAPI want the satellite's status, if it's azimuth if bigger than 720, then it's used in fix, else it's not. 
 
-@Override
-
-public void onGpsStatusChanged(int i) {
-
-	GpsStatus status=lm.getGpsStatus(null);
-
-	Iterator<GpsSatellite> it= status.getSatellites().iterator();
-
-	while(it.hasNext()){
-
-		GpsSatellite sv = it.next();
-
-		int fakeElev = (int)sv.getElevation();
-		int prn = fakeElev / 10000;		// get real prn
-		fakeElev -= prn * 10000;
-		int sys = fakeElev / 1000;		// get sv system flag
-		fakeElev -= sys * 1000;
-		int used = fakeElev / 100;		// get is used in fix flag
-		int realElev = fakeElev % 100;	// get read elevation
-
-		MySate sate = new MySate();	
-		sate.prn = prn;				
-		sate.elev = realElev; 	
-		sate.azim = sv.getAzimuth();	
-		sate.snr = sv.getSnr();		
-		if (sys == 0)					
-			sate.sys = “gps”;
-		else if (sys == 1)
-			sate.sys = “bd”;
-		if (used == 1)				
-			sate.inUse = true;
-		else
-			sate.inUse = false;
-}
-
-
-This an ugly way of making support for both gps and bds, but it's simply, and you don't have to modify lots of jni, java files in various folders.
+As we do all the things in android's hal(parse nmea and conceal satellites's in_use_fix_flag) and framework(reveal satellites's in_use_fix_flag and restore azimuth to normal), so any 3rd party application can work with it.
