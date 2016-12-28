@@ -1,5 +1,5 @@
-# Android hal driver for gps and bds
-An android hal driver, support for both gps and bds satellites system.
+# Android HAL driver for GPS and BDS
+An android HAL driver, support for both GPS and BDS satellites system.
 
 ##Basic working flow
 
@@ -12,9 +12,9 @@ An android hal driver, support for both gps and bds satellites system.
 * NMEA protocol is not a topic here
 
 ##Android's limited
-As android's original location service only support prn from 1 to 32(for it's use an int32 to hold all the satellites's in_use_fix_flag), that's only enough for gps system. 
+As android's original location service only support prn from 1 to 32(for it's use an int32 to hold all the satellites's in_use_fix_flag), that's only enough for GPS system. 
 
-To support bds system, we need something more tricky.
+To support BDS system, we need something more tricky.
 
 As satellite's azimuth is always in range [0, 360), but with a float type, that's quite enough to hold something more.
 
@@ -23,6 +23,8 @@ So I add in_use_fix_flag to azimuth.
 If the satellite is used in fix, it's azimuth will plus 720, else nothing changed.
 
 And when the LocationAPI request satellite's status, if it's azimuth is bigger than 720, then it's used in fix, else, it's not. 
+
+To distinguish GPS and BDS satellites, I use different satellite's id range. [1, 32] for GPS satellites, and [201, 216] for BDS satellites.
 
 As we do all the things in android's hal(parse nmea and conceal satellites's in_use_fix_flag) and framework(reveal satellites's in_use_fix_flag and restore azimuth to normal), so any 3rd party application can work with it.
 
