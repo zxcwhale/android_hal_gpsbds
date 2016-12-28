@@ -1,4 +1,4 @@
-# android_hal_gpsbds
+# Android hal driver for gps and bds
 An android hal driver, support for both gps and bds satellites system.
 
 Build and tested on android4.x.
@@ -25,3 +25,11 @@ As we do all the things in android's hal(parse nmea and conceal satellites's in_
 
 #How to use
 ##HAL level
+
+1. Copy folder /hardware/libgps to android source path
+2. Edit gps_zkw_v3.c, Change #define GNSS_TTY and #define GNSS_SPEED to correct value.
+3. Open a terminal, and cd to android source path
+4. Type command "source build/envsetup.sh" to setup build enviroment.
+5. Type command "mmm hardware/libgps/" to make gps.default.so.
+6. Cd to the path(Something like "out/target/product/xxx/system/lib/hw/" where xxx is your platform's name) containing gps.default.so.
+7. Type command "adb push gps.default.so /system/lib/hw/" to install hal driver to your device.
