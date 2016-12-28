@@ -11,6 +11,8 @@ Build and tested on android4.x.
 
 /frameworks/base/location/java/android/locaton/GpsStatus.java
 
+##Tips
+
 As android's original location service only support prn from 1 to 32(for it's use an int32 to hold all the satellites's in_use_fix_flag), that's only enough for gps system. 
 
 To support bds system, we need something more tricky.
