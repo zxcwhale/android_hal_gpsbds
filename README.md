@@ -23,6 +23,12 @@ And when the LocationAPI want the satellite's status, if it's azimuth if bigger 
 
 As we do all the things in android's hal(parse nmea and conceal satellites's in_use_fix_flag) and framework(reveal satellites's in_use_fix_flag and restore azimuth to normal), so any 3rd party application can work with it.
 
+#Requirements
+1. Android source code
+2. Android build enviroment.
+3. You must first build the full android source.
+*How to build android source is not a topic here.
+
 #How to use
 ##HAL level
 
@@ -32,4 +38,5 @@ As we do all the things in android's hal(parse nmea and conceal satellites's in_
 4. Type command "source build/envsetup.sh" to setup build enviroment.
 5. Type command "mmm hardware/libgps/" to make gps.default.so.
 6. Cd to the path(Something like "out/target/product/xxx/system/lib/hw/" where xxx is your platform's name) containing gps.default.so.
-7. Type command "adb push gps.default.so /system/lib/hw/" to install hal driver to your device.
+7. Connect your device to your computer with USB debug mode.
+8. Type command "adb push gps.default.so /system/lib/hw/" to install hal driver to your device.
