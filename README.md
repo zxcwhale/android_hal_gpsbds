@@ -76,7 +76,9 @@ The driver will take effect after you reboot the device.
 
 ##Snapshots of GPSTest
 ![alt tag](https://cloud.githubusercontent.com/assets/4736883/21516494/c55fa79c-cd13-11e6-9969-63a8441b13e4.JPG)
-  Dots are GPS satellites.
-  Triangles are BDS satellites.
+ 
+Dots are GPS satellites.
+
+Triangles are BDS satellites.
 
 ![alt tag](https://cloud.githubusercontent.com/assets/4736883/21516497/c98e5c46-cd13-11e6-8c7b-80a699a4f2c3.JPG)
