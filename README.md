@@ -4,8 +4,11 @@ An android hal driver, support for both gps and bds satellites system.
 Build and tested on android4.x.
 
 ##Files
+
 /hardware/libgps/gps_zkw_v3.c
+
 /hardware/libgps/android.mk
+
 /frameworks/base/location/java/android/locaton/GpsStatus.java
 
 As android's original location service only support prn from 1 to 32(for it's use an int32 to hold all the satellites's in_use_fix_flag), that's only enough for gps system. 
