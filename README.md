@@ -63,7 +63,7 @@ As we do all the things in android's hal(parse nmea and conceal satellites's in_
 
 ##Framework level
 
-1. Replace GpsStatus.java with the origin one.
+1. Replace android's old /frameworks/base/location/java/android/locaton/GpsStatus.java file with the new one in this project. 
 2. Open a terminal, and cd to android source path
 3. Type command "source build/envsetup.sh" to setup build.
 4. Type command "mmm frameworks/base" to build framework.jar
