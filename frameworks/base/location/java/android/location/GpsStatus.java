@@ -161,17 +161,18 @@ public final class GpsStatus {
                 satellite.mHasAlmanac = ((almanacMask & prnShift) != 0);
                 // satellite.mUsedInFix = ((usedInFixMask & prnShift) != 0);
 				
-				//~~~~~~~~ modified start ~~~~~~~~
-				float azimuth = azimuths[i];
-				if (azimuth > 719) {
-					satellite.mAzimuth = azimuth - 720;
-					satellite.mUsedInFix = true;
-				}
-				else {
-					satellite.mAzimuth = azimuth;
-					satellite.mUsedInFix = false;
-				}
-				//~~~~~~~~ modified end ~~~~~~~~~~
+
+		//~~~~~~~~ modified start ~~~~~~~~
+		float azimuth = azimuths[i];
+		if (azimuth > 719) {
+		    satellite.mAzimuth = azimuth - 720;
+		    satellite.mUsedInFix = true;
+		}
+		else {
+		    satellite.mAzimuth = azimuth;
+		    satellite.mUsedInFix = false;
+		}
+		//~~~~~~~~ modified end ~~~~~~~~~~
             }
         }
     }
