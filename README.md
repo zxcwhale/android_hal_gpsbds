@@ -1,13 +1,6 @@
 # Android hal driver for gps and bds
 An android hal driver, support for both gps and bds satellites system.
 
-##Files
-1. hardware/libgps/gps_zkw_v3.c
-2. hardware/libgps/android.mk
-3. frameworks/base/location/java/android/locaton/GpsStatus.java
-
-##Tips
-
 As android's original location service only support prn from 1 to 32(for it's use an int32 to hold all the satellites's in_use_fix_flag), that's only enough for gps system. 
 
 To support bds system, we need something more tricky.
@@ -21,6 +14,12 @@ If the satellite is used in fix, it's azimuth will plus 720, else nothing change
 And when the LocationAPI request satellite's status, if it's azimuth is bigger than 720, then it's used in fix, else, it's not. 
 
 As we do all the things in android's hal(parse nmea and conceal satellites's in_use_fix_flag) and framework(reveal satellites's in_use_fix_flag and restore azimuth to normal), so any 3rd party application can work with it.
+
+##Files
+
+1. hardware/libgps/gps_zkw_v3.c
+2. hardware/libgps/android.mk
+3. frameworks/base/location/java/android/locaton/GpsStatus.java
 
 #Requirements
 
