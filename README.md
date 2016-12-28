@@ -74,6 +74,6 @@ As we do all the things in android's hal(parse nmea and conceal satellites's in_
 ###Reboot your device
 The driver will take effect after you reboot the device.
 
-##Snapshots of Gps Tester
+##Snapshots of GPSTest
 ![alt tag](https://cloud.githubusercontent.com/assets/4736883/21516494/c55fa79c-cd13-11e6-9969-63a8441b13e4.JPG)
 ![alt tag](https://cloud.githubusercontent.com/assets/4736883/21516497/c98e5c46-cd13-11e6-8c7b-80a699a4f2c3.JPG)
