@@ -1,5 +1,5 @@
 # Android HAL driver for GPS and BDS
-An android HAL driver, support for both GPS and BDS satellites system.
+An android HAL driver project, to support for both GPS and BDS satellites system.
 
 ##Basic workflow
 
@@ -45,16 +45,16 @@ As we do all the things in android's hal(parse nmea and conceal satellites's in_
 ##How to use
 ###Sepcial notes
 
-1. This driver is build and tested on origin android v4.0.4.
+1. This project is build and tested on origin android v4.0.4.
 2. Someone said they found it also work well on origin android4.4 and android5.x.
 3. It definitelly NOT work on any MTK android version.
 4. Not guarantee anything on other android versions.
 
 ###HAL level
 
-1. Copy folder /hardware/libgps to android source path
+1. Copy folder /hardware/libgps/ to android source path.
 2. Edit gps_zkw_v3.c, Change #define GNSS_TTY and #define GNSS_SPEED to correct value.
-3. Open a terminal, and cd to android source path
+3. Open a terminal, and cd to android source path.
 4. Type command "source build/envsetup.sh" to setup build.
 5. Type command "mmm hardware/libgps" to build gps.default.so.
 6. Cd to the path(Something like "out/target/product/xxx/system/lib/hw/" where xxx is your platform's name) containing gps.default.so.
@@ -80,3 +80,6 @@ The driver will take effect after you reboot the device.
 * Triangles are BDS satellites.
 
 ![alt tag](https://cloud.githubusercontent.com/assets/4736883/21516497/c98e5c46-cd13-11e6-8c7b-80a699a4f2c3.JPG)
+* 10 to 32 with white foreground and black background are GPS satellites.
+* 206 with black foreground and white background are BDS satellites.
+* The maximum display satellites number of GPSTest are 12, but there are 15 satellites in view, so the rest 3 BDS satellites are not displayed.
