@@ -1,8 +1,6 @@
 # Android hal driver for gps and bds
 An android hal driver, support for both gps and bds satellites system.
 
-Build and tested on android4.x.
-
 ##Files
 1. hardware/libgps/gps_zkw_v3.c
 2. hardware/libgps/android.mk
@@ -25,6 +23,7 @@ And when the LocationAPI want the satellite's status, if it's azimuth if bigger 
 As we do all the things in android's hal(parse nmea and conceal satellites's in_use_fix_flag) and framework(reveal satellites's in_use_fix_flag and restore azimuth to normal), so any 3rd party application can work with it.
 
 #Requirements
+
 1. Android source code
 2. Android build enviroment.
 3. You must first build the full android source.
@@ -32,8 +31,13 @@ As we do all the things in android's hal(parse nmea and conceal satellites's in_
 *How to build android source is not a topic here.
 
 #How to use
-##Sepcial note
-This driver is just for origin version android system, and not work on MTK version, and not guarantee anything on other versions.
+##Sepcial notes
+
+1. This driver is build and tested on origin android v4.0.4.
+2. Someone said they found it also work well on origin android4.4 and android5.x.
+3. It definitelly NOT work on any MTK android version.
+4. Not guarantee anything on other android versions.
+
 ##HAL level
 
 1. Copy folder /hardware/libgps to android source path
