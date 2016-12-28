@@ -32,7 +32,7 @@ As we do all the things in android's hal(parse nmea and conceal satellites's in_
 2. hardware/libgps/android.mk
 3. frameworks/base/location/java/android/locaton/GpsStatus.java
 
-#Requirements
+##Requirements
 
 1. Android source code
 2. Android build enviroment.
