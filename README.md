@@ -4,10 +4,10 @@ An android hal driver, support for both gps and bds satellites system.
 ##Basic working flow
 
 1. When android system boot, it will auto load /system/hw/lib/gps.default.so
-2. gps.default.so first open gps tty and start a thread to listen the gps tty
-3. gps.default.so will parse the NMEA protocol on gps tty
-4. When the NMEA data containing locaion info(latitude, longitude and altitude), gps.default.so report location to framework.
-5. When the NMEA data containing satellites info(prn, azimuth, elevation, cn0 and is_used), gps.default.so report satellites's status to framework.
+2. gps.default.so first open gps tty and start a thread(gps_state_thread) to listen the gps tty
+3. gps_state_thread will alse parse the NMEA protocol on gps tty
+4. When the NMEA data containing locaion info(latitude, longitude and altitude), gps_state_thread report location to framework.
+5. When the NMEA data containing satellites info(prn, azimuth, elevation, cn0 and is_used), gps_state_thread report satellites's status to framework.
 
 * NMEA protocol is not a topic here
 
