@@ -9,7 +9,7 @@ An android HAL driver, support for both GPS and BDS satellites system.
 4. When the NMEA data containing locaion info(latitude, longitude and altitude), gps_state_thread report location to framework.
 5. When the NMEA data containing satellites info(prn, azimuth, elevation, cn0 and is_used), gps_state_thread report satellites's status to framework.
 
-* NMEA protocol is not a topic here
+*NMEA protocol is not a topic here
 
 ##Android's limited
 As android's original location service only support prn from 1 to 32(for it's use an int32 to hold all the satellites's in_use_fix_flag), that's only enough for GPS system. 
@@ -77,8 +77,7 @@ The driver will take effect after you reboot the device.
 ##Snapshots of GPSTest
 ![alt tag](https://cloud.githubusercontent.com/assets/4736883/21516494/c55fa79c-cd13-11e6-9969-63a8441b13e4.JPG)
  
-Dots are GPS satellites.
-
-Triangles are BDS satellites.
+* Dots are GPS satellites.
+* Triangles are BDS satellites.
 
 ![alt tag](https://cloud.githubusercontent.com/assets/4736883/21516497/c98e5c46-cd13-11e6-8c7b-80a699a4f2c3.JPG)
