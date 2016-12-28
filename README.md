@@ -32,7 +32,7 @@ As we do all the things in android's hal(parse nmea and conceal satellites's in_
 
 #How to use
 ##Sepcial note
-This driver in under origin android system, not suite for MTK version, and other 
+This driver is just for origin version android system, and not work on MTK version, and not guarantee anything on other versions.
 ##HAL level
 
 1. Copy folder /hardware/libgps to android source path
