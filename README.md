@@ -27,6 +27,7 @@ As we do all the things in android's hal(parse nmea and conceal satellites's in_
 1. Android source code
 2. Android build enviroment.
 3. You must first build the full android source.
+
 *How to build android source is not a topic here.
 
 #How to use
