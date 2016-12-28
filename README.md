@@ -31,13 +31,28 @@ As we do all the things in android's hal(parse nmea and conceal satellites's in_
 *How to build android source is not a topic here.
 
 #How to use
+##Sepcial note
+This driver in under origin android system, not suite for MTK version, and other 
 ##HAL level
 
 1. Copy folder /hardware/libgps to android source path
 2. Edit gps_zkw_v3.c, Change #define GNSS_TTY and #define GNSS_SPEED to correct value.
 3. Open a terminal, and cd to android source path
-4. Type command "source build/envsetup.sh" to setup build enviroment.
-5. Type command "mmm hardware/libgps/" to make gps.default.so.
+4. Type command "source build/envsetup.sh" to setup build.
+5. Type command "mmm hardware/libgps" to build gps.default.so.
 6. Cd to the path(Something like "out/target/product/xxx/system/lib/hw/" where xxx is your platform's name) containing gps.default.so.
 7. Connect your device to your computer with USB debug mode.
-8. Type command "adb push gps.default.so /system/lib/hw/" to install hal driver to your device.
+8. Type command "adb push gps.default.so /system/lib/hw" to install hal driver to your device.
+
+##Framework level
+
+1. Replace GpsStatus.java with the origin one.
+2. Open a terminal, and cd to android source path
+3. Type command "source build/envsetup.sh" to setup build.
+4. Type command "mmm frameworks/base" to build framework.jar
+5. Cd to the path(Something like "out/target/product/xxx/system/framework/" where xxx is your platform's name) containing framework.jar
+6. Connect your device to your computer with USB debug mode.
+8. Type command "adb push framework.jar /system/framework" to update new framework to your device.
+
+##Reboot your device
+The driver will take effect after you reboot your device.
