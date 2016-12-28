@@ -38,8 +38,6 @@
 #include <hardware/gps.h>
 #include <cutils/properties.h>
 
-/* the name of the qemud-controlled socket */
-#define QEMU_CHANNEL_NAME  "gps"
 
 #define GPS_DEBUG  1
 #define NMEA_DEBUG 0
