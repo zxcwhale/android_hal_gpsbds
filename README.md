@@ -5,11 +5,9 @@ Build and tested on android4.x.
 
 ##Files
 
-/hardware/libgps/gps_zkw_v3.c
-
-/hardware/libgps/android.mk
-
-/frameworks/base/location/java/android/locaton/GpsStatus.java
+hardware/libgps/gps_zkw_v3.c
+hardware/libgps/android.mk
+frameworks/base/location/java/android/locaton/GpsStatus.java
 
 ##Tips
 
