@@ -55,4 +55,4 @@ This driver is just for origin version android system, and not work on MTK versi
 8. Type command "adb push framework.jar /system/framework" to update new framework to your device.
 
 ##Reboot your device
-The driver will take effect after you reboot your device.
+The driver will take effect after you reboot the device.
