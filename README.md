@@ -23,5 +23,17 @@ And when the LocationAPI want the satellite's status, if it's azimuth if bigger 
 
 As we do all the things in android's hal(parse nmea and conceal satellites's in_use_fix_flag) and framework(reveal satellites's in_use_fix_flag and restore azimuth to normal), so any 3rd party application can work with it.
 
-How to use
-First thing of first, change /dev/ttySAC0 to your tty. 
+#How to use
+## HAL level
+
+    1 Copy 
+
+    1) Open and edit gps_zkw_v3.c
+       Change #define GNSS_TTY "/dev/ttySAC0" to your actual tty.
+       Change #define GNSS_SPEED B9600 to your actual baudrate.
+
+    4) Use mmm hardware/libgps command to make gps.default.so.
+
+    5) push gps.default.so to your device's /system/hw/lib/ folder
+2. Framework level
+    1) Replace
