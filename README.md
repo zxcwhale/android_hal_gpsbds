@@ -1,7 +1,7 @@
 # Android HAL driver for GPS and BDS
 An android HAL driver, support for both GPS and BDS satellites system.
 
-##Basic working flow
+##Basic workflow
 
 1. When android system boot, it will auto load /system/hw/lib/gps.default.so
 2. gps.default.so first open gps tty and start a thread(gps_state_thread) to listen the gps tty
