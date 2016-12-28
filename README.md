@@ -40,15 +40,15 @@ As we do all the things in android's hal(parse nmea and conceal satellites's in_
 
 *How to build android source is not a topic here.
 
-#How to use
-##Sepcial notes
+##How to use
+###Sepcial notes
 
 1. This driver is build and tested on origin android v4.0.4.
 2. Someone said they found it also work well on origin android4.4 and android5.x.
 3. It definitelly NOT work on any MTK android version.
 4. Not guarantee anything on other android versions.
 
-##HAL level
+###HAL level
 
 1. Copy folder /hardware/libgps to android source path
 2. Edit gps_zkw_v3.c, Change #define GNSS_TTY and #define GNSS_SPEED to correct value.
@@ -69,5 +69,5 @@ As we do all the things in android's hal(parse nmea and conceal satellites's in_
 6. Connect your device to your computer with USB debug mode.
 8. Type command "adb push framework.jar /system/framework" to update new framework to your device.
 
-##Reboot your device
+###Reboot your device
 The driver will take effect after you reboot the device.
