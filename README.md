@@ -50,6 +50,16 @@ As we do all the things in android's hal(parse nmea and conceal satellites's in_
 3. It definitelly NOT work on any MTK android version.
 4. Not guarantee anything on other android versions.
 
+##Framework level
+
+1. Replace android's old /frameworks/base/location/java/android/locaton/GpsStatus.java file with the new one in this project. 
+2. Open a terminal, and cd to android source path
+3. Type command "source build/envsetup.sh" to setup build.
+4. Type command "mmm frameworks/base" to build framework.jar
+5. Cd to the path(Something like "out/target/product/xxx/system/framework/" where xxx is your platform's name) containing framework.jar
+6. Connect your device to your computer with USB debug mode.
+8. Type command "adb push framework.jar /system/framework" to update new framework to your device.
+
 ###HAL level
 
 1. Copy folder /hardware/libgps/ to android source path.
@@ -61,18 +71,8 @@ As we do all the things in android's hal(parse nmea and conceal satellites's in_
 7. Connect your device to your computer with USB debug mode.
 8. Type command "adb push gps.default.so /system/lib/hw" to install hal driver to your device.
 
-##Framework level
-
-1. Replace android's old /frameworks/base/location/java/android/locaton/GpsStatus.java file with the new one in this project. 
-2. Open a terminal, and cd to android source path
-3. Type command "source build/envsetup.sh" to setup build.
-4. Type command "mmm frameworks/base" to build framework.jar
-5. Cd to the path(Something like "out/target/product/xxx/system/framework/" where xxx is your platform's name) containing framework.jar
-6. Connect your device to your computer with USB debug mode.
-8. Type command "adb push framework.jar /system/framework" to update new framework to your device.
-
-###Reboot your device
-The driver will take effect after you reboot the device.
+###Taking effect
+The driver will taking effect after you reboot the device.
 
 ##Snapshots of GPSTest
 ![alt tag](https://cloud.githubusercontent.com/assets/4736883/21516494/c55fa79c-cd13-11e6-9969-63a8441b13e4.JPG)
