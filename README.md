@@ -50,7 +50,7 @@ As we do all the things in android's hal(parse nmea and conceal satellites's in_
 3. It definitelly NOT work on any MTK android version.
 4. Not guarantee anything on other android versions.
 
-##Framework level
+##Framework changes
 
 1. Replace android's old /frameworks/base/location/java/android/locaton/GpsStatus.java file with the new one in this project. 
 2. Open a terminal, and cd to android source path
@@ -60,7 +60,7 @@ As we do all the things in android's hal(parse nmea and conceal satellites's in_
 6. Connect your device to your computer with USB debug mode.
 8. Type command "adb push framework.jar /system/framework" to update new framework to your device.
 
-###HAL level
+###HAL changes
 
 1. Copy folder /hardware/libgps/ to android source path.
 2. Edit gps_zkw_v3.c, Change #define GNSS_TTY and #define GNSS_SPEED to correct value.
