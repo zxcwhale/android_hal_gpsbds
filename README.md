@@ -11,7 +11,7 @@ An android HAL driver project, to support for both GPS and BDS satellites system
 
 *NMEA protocol is not a topic here
 
-##Android's limited
+##Android's limitation
 As android's original location service only support prn from 1 to 32(for it's use an int32 to hold all the satellites's in_use_fix_flag), that's only enough for GPS system. 
 
 To support BDS system, we need something more tricky.
