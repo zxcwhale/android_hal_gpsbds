@@ -75,11 +75,11 @@ As we do all the things in android's hal(parse nmea and conceal satellites's in_
 The driver will taking effect after you reboot the device.
 
 ##Snapshots of GPSTest
-![alt tag](https://cloud.githubusercontent.com/assets/4736883/21558867/1b691146-ce7c-11e6-93fb-ec7dd9784f20.png)
+![alt tag](https://cloud.githubusercontent.com/assets/4736883/21558868/1b6a6fc8-ce7c-11e6-9251-ef4aa9781d4d.png)
+
 * Dots are GPS satellites.
 * Triangles are BDS satellites.
 
-![alt tag](https://cloud.githubusercontent.com/assets/4736883/21558868/1b6a6fc8-ce7c-11e6-9251-ef4aa9781d4d.png)
-* 10 to 32 with white foreground and black background are GPS satellites.
-* 206 with black foreground and white background are BDS satellites.
-* The maximum display satellites number of GPSTest are 12, but there are 15 satellites in view, so the rest 3 BDS satellites are not displayed.
+![alt tag](https://cloud.githubusercontent.com/assets/4736883/21558867/1b691146-ce7c-11e6-93fb-ec7dd9784f20.png)
+* 02,05,13,15,20,21,24,29 and 30 with white foreground and black background are GPS satellites.
+* 201, 202 and 203 with black foreground and white background are BDS satellites.
