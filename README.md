@@ -50,7 +50,7 @@ As we do all the things in android's hal(parse nmea and conceal satellites's in_
 3. It definitelly NOT work on any MTK android version.
 4. Not guarantee anything on other android versions.
 
-##Framework changes
+###Framework changes
 
 1. Replace android's old /frameworks/base/location/java/android/locaton/GpsStatus.java file with the new one in this project. 
 2. Open a terminal, and cd to android source path
