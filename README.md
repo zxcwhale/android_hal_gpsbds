@@ -5,11 +5,9 @@ An android HAL driver project, to support for both GPS and BDS satellites system
 
 1. When android system boot, it will auto load /system/hw/lib/gps.default.so
 2. gps.default.so first open gps tty and start a thread(gps_state_thread) to listen the gps tty
-3. gps_state_thread will alse parse the NMEA protocol on gps tty
+3. gps_state_thread will alse parse the [NMEA 0183 protocol](https://en.wikipedia.org/wiki/NMEA_0183) on gps tty
 4. When the NMEA data containing locaion info(latitude, longitude and altitude), gps_state_thread report location to framework.
 5. When the NMEA data containing satellites info(prn, azimuth, elevation, cn0 and is_used), gps_state_thread report satellites's status to framework.
-
-*About NMEA protocol https://en.wikipedia.org/wiki/NMEA_0183
 
 ##The idea of change
 As android's original location service only support prn from 1 to 32(for it's use an int32 to hold all the satellites's in_use_fix_flag), that's only enough for GPS system. 
