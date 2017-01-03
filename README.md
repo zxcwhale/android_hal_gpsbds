@@ -42,37 +42,21 @@ As we do all the things in android's hal(parse nmea and conceal satellites's in_
 
 *How to build android source is not a topic here.
 
-##How to use
-###Sepcial notes
+
+##Sepcial notes
 
 1. This project is build and tested on origin android v4.0.4.
 2. Someone said they found it also work well on origin android4.4 and android5.x.
 3. It definitelly NOT work on any MTK android version.
 4. Not guarantee anything on other android versions.
 
-###Framework changes
+##How to use
 
 1. Replace android's old /frameworks/base/location/java/android/locaton/GpsStatus.java file with the new one in this project. 
-2. Open a terminal, and cd to android source path
-3. Type command "source build/envsetup.sh" to setup build.
-4. Type command "mmm frameworks/base" to build framework.jar
-5. Cd to the path(Something like "out/target/product/xxx/system/framework/" where xxx is your platform's name) containing framework.jar
-6. Connect your device to your computer with USB debug mode.
-8. Type command "adb push framework.jar /system/framework" to update new framework to your device.
-
-###HAL changes
-
-1. Copy folder /hardware/libgps/ to android source path.
-2. Edit gps_zkw_v3.c, Change #define GNSS_TTY and #define GNSS_SPEED to correct value.
-3. Open a terminal, and cd to android source path.
-4. Type command "source build/envsetup.sh" to setup build.
-5. Type command "mmm hardware/libgps" to build gps.default.so.
-6. Cd to the path(Something like "out/target/product/xxx/system/lib/hw/" where xxx is your platform's name) containing gps.default.so.
-7. Connect your device to your computer with USB debug mode.
-8. Type command "adb push gps.default.so /system/lib/hw" to install hal driver to your device.
-
-###Taking effect
-The driver will taking effect after you reboot the device.
+2. Copy folder /hardware/libgps/ to android source path.
+3. Edit gps_zkw_v3.c, Change #define GNSS_TTY and #define GNSS_SPEED to correct value.
+5. Rebuild android source code.
+6. Update your device with the new image.
 
 ##Snapshots of GPSTest
 ![alt tag](https://cloud.githubusercontent.com/assets/4736883/21558868/1b6a6fc8-ce7c-11e6-9251-ef4aa9781d4d.png)
