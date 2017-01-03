@@ -9,7 +9,7 @@ An android HAL driver project, to support for both GPS and BDS satellites system
 4. When the NMEA data containing locaion info(latitude, longitude and altitude), gps_state_thread report location to framework.
 5. When the NMEA data containing satellites info(prn, azimuth, elevation, cn0 and is_used), gps_state_thread report satellites's status to framework.
 
-*NMEA protocol is not a topic here
+*About NMEA protocol https://en.wikipedia.org/wiki/NMEA_0183
 
 ##The idea of change
 As android's original location service only support prn from 1 to 32(for it's use an int32 to hold all the satellites's in_use_fix_flag), that's only enough for GPS system. 
@@ -40,7 +40,7 @@ As we do all the things in android's hal(parse nmea and conceal satellites's in_
 2. Android build enviroment.
 3. You must first build the full android source.
 
-*How to build android source is not a topic here.
+*About building android source code https://source.android.com/source/requirements.html
 
 
 ##Sepcial notes
