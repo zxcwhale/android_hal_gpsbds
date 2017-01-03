@@ -34,11 +34,9 @@ As we do all the things in android's hal(parse nmea and conceal satellites's in_
 
 ##Requirements
 
-1. Android source code
+1. Android source code.
 2. Android build enviroment.
-3. You must first build the full android source.
-
-*About building android source code https://source.android.com/source/requirements.html
+3. [Build the android source](https://source.android.com/source/requirements.html).
 
 
 ##Sepcial notes
