@@ -1,7 +1,7 @@
 # Android HAL driver for GPS and BDS
 An android HAL driver project, to support for both GPS and BDS satellites system.
 
-##Basic workflow
+##Workflow
 
 1. When android system boot, it will auto load /system/hw/lib/gps.default.so
 2. gps.default.so first open gps tty and start a thread(gps_state_thread) to listen the gps tty
@@ -9,7 +9,7 @@ An android HAL driver project, to support for both GPS and BDS satellites system
 4. When the NMEA data containing locaion info(latitude, longitude and altitude), gps_state_thread report location to framework.
 5. When the NMEA data containing satellites info(prn, azimuth, elevation, cn0 and is_used), gps_state_thread report satellites's status to framework.
 
-##The idea of change
+##Changes
 As android's original location service only support prn from 1 to 32(for it's use an int32 to hold all the satellites's in_use_fix_flag), that's only enough for GPS system. 
 
 To support BDS system, we need something more tricky.
