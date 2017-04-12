@@ -1,7 +1,7 @@
 # Android HAL driver for GPS and BDS
 An android HAL driver project, to support for both GPS and BDS satellites system.
 
-##Workflow
+## Workflow
 
 1. When android system boot, it will auto load /system/hw/lib/gps.default.so
 2. gps.default.so first open gps tty and start a thread(gps_state_thread) to listen the gps tty
@@ -9,7 +9,7 @@ An android HAL driver project, to support for both GPS and BDS satellites system
 4. When the NMEA data containing locaion info(latitude, longitude and altitude), gps_state_thread report location to framework.
 5. When the NMEA data containing satellites info(prn, azimuth, elevation, cn0 and is_used), gps_state_thread report satellites's status to framework.
 
-##Changes
+## Changes
 
 As android's original location service only support prn from 1 to 32(for it's use an int32 to hold all the satellites's in_use_fix_flag), that's only enough for GPS system. 
 
@@ -27,27 +27,27 @@ To distinguish GPS and BDS satellites, I use different satellite's id range. [1,
 
 As we do all the things in android's hal(parse nmea and conceal satellites's in_use_fix_flag) and framework(reveal satellites's in_use_fix_flag and restore azimuth to normal), so any 3rd party application can work with it.
 
-##Files
+## Files
 
 1. hardware/libgps/gps_zkw_v3.c
 2. hardware/libgps/android.mk
 3. frameworks/base/location/java/android/locaton/GpsStatus.java
 
-##Requirements
+## Requirements
 
 1. Android source code.
 2. Android build enviroment.
 3. [Build the android source](https://source.android.com/source/requirements.html).
 
 
-##Sepcial notes
+## Sepcial notes
 
 1. This project is build and tested on origin android v4.0.4.
 2. Someone said they found it also work well on origin android4.4 and android5.x.
 3. It definitelly NOT work on any MTK android version.
 4. Not guarantee anything on other android versions.
 
-##How to use
+## How to use
 
 1. Replace android's old /frameworks/base/location/java/android/locaton/GpsStatus.java file with the new one in this project. 
 2. Copy folder /hardware/libgps/ to android source path.
@@ -55,7 +55,7 @@ As we do all the things in android's hal(parse nmea and conceal satellites's in_
 5. Rebuild android source code.
 6. Update your device with the new image.
 
-##Snapshots of GPSTest
+## Snapshots of GPSTest
 ![alt tag](https://cloud.githubusercontent.com/assets/4736883/21558868/1b6a6fc8-ce7c-11e6-9251-ef4aa9781d4d.png)
 
 * Dots are GPS satellites.
