@@ -1240,8 +1240,8 @@ static int open_gps(const struct hw_module_t* module, char const* name,
     dev->common.version = 0;
     dev->common.module = (struct hw_module_t*)module;
     dev->get_gps_interface = get_gps_interface;
-	//_gps_state->init = 0;
-	D("Zkw hal driver opend");
+    _gps_state->init = 0;
+    D("Zkw hal driver opened.");
     *device = (struct hw_device_t*)dev;
     return 0;
 }
