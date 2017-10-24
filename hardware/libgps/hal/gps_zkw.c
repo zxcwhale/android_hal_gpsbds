@@ -31,6 +31,8 @@
 #include <termios.h>
 #include <math.h>
 #include <time.h>
+#include <netinet/in.h>
+#include <netdb.h>
 
 #define  LOG_TAG  "gps_zkw"
 #include <cutils/log.h>
@@ -38,6 +40,10 @@
 #include <hardware/gps.h>
 #include <cutils/properties.h>
 
+#ifdef SUPL_ENABLED
+#include "supl.h"
+#endif
+/* the name of the qemud-controlled socket */
 
 #define GPS_DEBUG  1
 #define NMEA_DEBUG 0
@@ -48,7 +54,6 @@ typedef enum {
 	BDS_SV = 1,
 	GLONASS_SV = 2
 }SV_TYPE;
-
 
 #define PRN_PLUS_BDS 200
 #define PRN_PLUS_GLN 64
@@ -62,6 +67,8 @@ typedef enum {
 #  define  D(...)   ((void)0)
 #endif
 
+
+
 /*****************************************************************/
 /*****************************************************************/
 /*****                                                       *****/
@@ -69,6 +76,7 @@ typedef enum {
 /*****                                                       *****/
 /*****************************************************************/
 /*****************************************************************/
+
 
 typedef struct {
     const char*  p;
@@ -183,6 +191,65 @@ str2float( const char*  p, const char*  end )
     temp[len] = 0;
     return strtod( temp, NULL );
 }
+
+#ifdef SUPL_ENABLED
+static supl_ctx_t supl_ctx;
+static AGpsRilCallbacks *agpsRilCallbacks; 
+void supl_main();
+
+void
+agps_ril_init (AGpsRilCallbacks *callbacks) {
+	agpsRilCallbacks = callbacks;	
+}
+
+void
+agps_ril_set_ref_location (const AGpsRefLocation *agps_reflocation, size_t sz_struct) {
+	D("type = %d, mcc = %d, mnc = %d, lac = %d, cid = %d", 
+		agps_reflocation->u.cellID.type,	
+		agps_reflocation->u.cellID.mcc,	
+		agps_reflocation->u.cellID.mnc,	
+		agps_reflocation->u.cellID.lac,	
+		agps_reflocation->u.cellID.cid
+		);
+	if (agps_reflocation->type == AGPS_REF_LOCATION_TYPE_GSM_CELLID) {
+		supl_set_gsm_cell(&supl_ctx, agps_reflocation->u.cellID.mcc,
+									 agps_reflocation->u.cellID.mnc,
+									 agps_reflocation->u.cellID.lac,
+									 agps_reflocation->u.cellID.cid);
+	} 
+	else if (agps_reflocation->type == AGPS_REF_LOCATION_TYPE_UMTS_CELLID) {
+		supl_set_wcdma_cell(&supl_ctx, agps_reflocation->u.cellID.mcc,
+									   agps_reflocation->u.cellID.mcc,
+									   agps_reflocation->u.cellID.cid);
+	}
+	else {
+		D("No cell info");
+		supl_set_gsm_cell(&supl_ctx, 0, 0, 0, 0);	
+	}
+	supl_main();
+}
+
+void 
+agps_ril_set_set_id (AGpsSetIDType type, const char* setid) {
+	D("type = %d, setid = %s", type, setid);
+	if (type == AGPS_SETID_TYPE_MSISDN) {
+		D("set msisdn");
+		supl_set_msisdn(&supl_ctx, setid);
+		agpsRilCallbacks->request_refloc(AGPS_RIL_REQUEST_REFLOC_CELLID);	
+	}
+}
+
+static const AGpsRilInterface zkwAGpsRilInterface = {
+	.size = sizeof(AGpsRilInterface),
+	.init = agps_ril_init,
+	.set_ref_location = agps_ril_set_ref_location,
+	.set_set_id = agps_ril_set_set_id,
+	.ni_message = NULL,
+	.update_network_state = NULL,
+	.update_network_availability = NULL
+};
+
+#endif
 
 /*****************************************************************/
 /*****************************************************************/
@@ -748,8 +815,10 @@ nmea_reader_parse( NmeaReader*  r )
     }
 #if GPS_SV_INCLUDE
     if ( r->sv_status_changed == 1 ) {
+		D("Reprot sv status 1.");
         r->sv_status_changed = 0;
         if (r->sv_callback) {            
+			D("Reprot sv status 2.");
             nmea_reader_encode_sv_status(r);            
             r->sv_callback(&r->sv_status);
 
@@ -829,6 +898,173 @@ typedef struct {
 
 static GpsState  _gps_state[1];
 
+#ifdef SUPL_ENABLED
+static time_t utc_time(int week, long tow) {
+  time_t t;
+
+  /* Jan 5/6 midnight 1980 - beginning of GPS time as Unix time */
+  t = 315964801;
+
+  /* soon week will wrap again, uh oh... */
+  /* TS 44.031: GPSTOW, range 0-604799.92, resolution 0.08 sec, 23-bit presentation */
+  t += (1024 + week) * 604800 + tow*0.08;
+
+  return t;
+} 
+
+static int supl_consume_1(supl_assist_t *ctx) {
+  if (ctx->set & SUPL_RRLP_ASSIST_REFLOC) {
+    D("Reference Location:\n");
+    D("  Lat: %f\n", ctx->pos.lat);
+    D("  Lon: %f\n", ctx->pos.lon);
+    D("  Uncertainty: %d (%.1f m)\n", 
+	    ctx->pos.uncertainty, 10.0*(pow(1.1, ctx->pos.uncertainty)-1));
+  }
+
+  if (ctx->set & SUPL_RRLP_ASSIST_REFTIME) {
+    time_t t;
+
+    t = utc_time(ctx->time.gps_week, ctx->time.gps_tow);
+
+    D("Reference Time:\n");
+    D("  GPS Week: %ld\n", ctx->time.gps_week);
+    D("  GPS TOW:  %ld %lf\n", ctx->time.gps_tow, ctx->time.gps_tow*0.08);
+    D("  ~ UTC:    %s", ctime(&t));
+  }
+
+  if (ctx->set & SUPL_RRLP_ASSIST_IONO) {
+    D("Ionospheric Model:\n");
+    D("  # a0 a1 a2 b0 b1 b2 b3\n");
+    D("  %g, %g, %g",
+	    ctx->iono.a0 * pow(2.0, -30), 
+	    ctx->iono.a1 * pow(2.0, -27),
+	    ctx->iono.a2 * pow(2.0, -24));
+    D(" %g, %g, %g, %g\n",
+	    ctx->iono.b0 * pow(2.0, 11), 
+	    ctx->iono.b1 * pow(2.0, 14),
+	    ctx->iono.b2 * pow(2.0, 16), 
+	    ctx->iono.b3 * pow(2.0, 16));
+  }
+
+  if (ctx->set & SUPL_RRLP_ASSIST_UTC) {
+    D("UTC Model:\n");
+    D("  # a0, a1 delta_tls tot dn\n");
+    D("  %g %g %d %d %d %d %d %d\n",
+	    ctx->utc.a0 * pow(2.0, -30),
+	    ctx->utc.a1 * pow(2.0, -50),
+	    ctx->utc.delta_tls,
+	    ctx->utc.tot, ctx->utc.wnt, ctx->utc.wnlsf,
+	    ctx->utc.dn, ctx->utc.delta_tlsf);
+  }
+
+  if (ctx->cnt_eph) {
+    int i;
+
+    D("Ephemeris:");
+    D(" %d satellites\n", ctx->cnt_eph);
+    D("  # prn delta_n M0 A_sqrt OMEGA_0 i0 w OMEGA_dot i_dot Cuc Cus Crc Crs Cic Cis");
+    D(" toe IODC toc AF0 AF1 AF2 bits ura health tgd OADA\n");
+
+    for (i = 0; i < ctx->cnt_eph; i++) {
+      struct supl_ephemeris_s *e = &ctx->eph[i];
+
+      D("  %d %g %g %g %g %g %g %g %g",
+	      e->prn, 
+	      e->delta_n * pow(2.0, -43), 
+	      e->M0 * pow(2.0, -31), 
+	      e->A_sqrt * pow(2.0, -19), 
+	      e->OMEGA_0 * pow(2.0, -31), 
+	      e->i0 * pow(2.0, -31), 
+	      e->w * pow(2.0, -31), 
+	      e->OMEGA_dot * pow(2.0, -43), 
+	      e->i_dot * pow(2.0, -43));
+      D(" %g %g %g %g %g %g",
+	      e->Cuc * pow(2.0, -29), 
+	      e->Cus * pow(2.0, -29), 
+	      e->Crc * pow(2.0, -5), 
+	      e->Crs * pow(2.0, -5), 
+	      e->Cic * pow(2.0, -29), 
+	      e->Cis * pow(2.0, -29));
+      D(" %g %u %g %g %g %g",
+	      e->toe * pow(2.0, 4), 
+	      e->IODC, 
+	      e->toc * pow(2.0, 4), 
+	      e->AF0 * pow(2.0, -31), 
+	      e->AF1 * pow(2.0, -43), 
+	      e->AF2 * pow(2.0, -55));
+      D(" %d %d %d %d %d\n",
+	      e->bits,
+	      e->ura,
+	      e->health,
+	      e->tgd,
+	      e->AODA * 900);
+    }
+  }
+
+  if (ctx->cnt_alm) {
+    int i;
+
+    D("Almanac:");
+    D(" %d satellites\n", ctx->cnt_alm);
+    D("  # prn e toa Ksii OMEGA_dot A_sqrt OMEGA_0 w M0 AF0 AF1\n");
+
+    for (i = 0; i < ctx->cnt_alm; i++) {
+      struct supl_almanac_s *a = &ctx->alm[i];
+
+      D("  %d %g %g %g %g ",
+	      a->prn, 
+	      a->e * pow(2.0, -21), 
+	      a->toa * pow(2.0, 12),
+	      a->Ksii * pow(2.0, -19),
+	      a->OMEGA_dot * pow(2.0, -38));
+      D("%g %g %g %g %g %g\n",
+	      a->A_sqrt * pow(2.0, -11), 
+	      a->OMEGA_0 * pow(2.0, -23),
+	      a->w * pow(2.0, -23),
+	      a->M0 * pow(2.0, -23),
+	      a->AF0 * pow(2.0, -20),
+	      a->AF1 * pow(2.0, -38));
+    }
+  }
+
+  return 1;
+}
+
+void supl_thread(void *arg) {
+	GpsState *state = (GpsState *)arg;
+	int err;
+	char *server;
+	supl_assist_t assist;
+	
+	server = "supl.qxwz.com";	
+	
+	// supl_set_gsm_cell(&ctx, 460, 0, 0x5814, 0x9584);
+	supl_request(&supl_ctx, 0);
+
+	err = supl_get_assist(&supl_ctx, server, &assist);
+	
+	if (err < 0) {
+		D("SUPL protocol error %d\n", err);
+		return;
+	}	
+	supl_consume_1(&assist);
+	supl_ctx_free(&supl_ctx);
+}
+
+void supl_main() {
+
+	// agpsRilCallbacks->request_refloc(AGPS_RIL_REQUEST_REFLOC_CELLID);
+	// agpsRilCallbacks->request_setid(AGPS_RIL_REQUEST_SETID_MSISDN);
+	GpsState *state = _gps_state;
+	int thread = state->callbacks.create_thread_cb("supl_thread", supl_thread, state);
+	if (!thread) {
+		D("Could not create supl thread: %s", strerror(errno));
+		return;
+	}
+}
+#endif
+
+
 #if GPS_SV_INCLUDE
 static char * gps_idle_on   = "$PCGDC,IDLEON,1,*1\r\n";
 static char * gps_idle_off  = "$PCGDC,IDLEOFF,1,*1\r\n";
@@ -868,6 +1104,12 @@ gps_state_start( GpsState*  s )
 #if GPS_SV_INCLUDE
     write(s->fd,gps_idle_off,strlen(gps_idle_off));
     D("%s",gps_idle_off);
+#endif
+
+#ifdef SUPL_ENABLED
+	// supl_main(s);
+	supl_ctx_new(&supl_ctx);
+	agpsRilCallbacks->request_setid(AGPS_RIL_REQUEST_SETID_MSISDN);
 #endif
 }
 
@@ -979,6 +1221,10 @@ gps_state_thread( void*  arg )
                     }
                     else if (cmd == CMD_START) {
                         if (!started) {
+							// version query
+							// char cmdbuf[] = "$PCAS06,0*1B\r\n"; 
+							// int ret = write(gps_fd, cmdbuf, sizeof(cmdbuf));
+							// D("send GPTXT version query cmd, ret = %d , cmd = %s ", ret, cmdbuf);
                             D("gps thread starting  location_cb=%p", state->callbacks.location_cb);
                             started = 1;
                             nmea_reader_set_nmea_callback( reader, state->callbacks.nmea_cb );
@@ -991,6 +1237,7 @@ gps_state_thread( void*  arg )
                                 reader->status.status = GPS_STATUS_SESSION_BEGIN;
                                 reader->status_callback(&reader->status);
                             }
+
                         }
                     }
                     else if (cmd == CMD_STOP) {
@@ -1063,7 +1310,7 @@ gps_state_init( GpsState*  state)
     state->fd = open(state->device, O_RDWR | O_NONBLOCK | O_NOCTTY);
 
     if (state->fd < 0) {
-        D("no gps detected");
+        D("Can not open gps tty: %s, errno = %d", state->device, errno);
         return;
     }
 	D("gps uart open %s success!", state->device);
@@ -1200,15 +1447,24 @@ static int
 zkw_gps_set_position_mode(GpsPositionMode mode, GpsPositionRecurrence recurrence,
              uint32_t min_interval, uint32_t preferred_accuracy, uint32_t preferred_time)
 {
- return 0;
+	return 0;
 }
 
 static const void*
 zkw_gps_get_extension(const char* name)
 {
     // no extensions supported
+	/*if ( strcmp(name, AGPS_INTERFACE) == 0 ) {
+		return &zkwAGpsInterface;
+	}
+	else*/
+    if ( strcmp(name, AGPS_RIL_INTERFACE) == 0 ) {
+		return &zkwAGpsRilInterface;
+	}
     return NULL;
 }
+
+
 
 static const GpsInterface  zkwGpsInterface = {
     .size  = sizeof(GpsInterface),
@@ -1216,11 +1472,11 @@ static const GpsInterface  zkwGpsInterface = {
     .start = zkw_gps_start,
     .stop  = zkw_gps_stop,
     .cleanup = zkw_gps_cleanup,
-    .inject_time=zkw_gps_inject_time,
-    .inject_location=zkw_gps_inject_location,
-    .delete_aiding_data=zkw_gps_delete_aiding_data,
-    .set_position_mode=zkw_gps_set_position_mode,
-    .get_extension=zkw_gps_get_extension,
+    .inject_time = zkw_gps_inject_time,
+    .inject_location = zkw_gps_inject_location,
+    .delete_aiding_data = zkw_gps_delete_aiding_data,
+    .set_position_mode = zkw_gps_set_position_mode,
+    .get_extension = zkw_gps_get_extension,
 };
 
 static const GpsInterface* get_gps_interface()
@@ -1240,8 +1496,9 @@ static int open_gps(const struct hw_module_t* module, char const* name,
     dev->common.version = 0;
     dev->common.module = (struct hw_module_t*)module;
     dev->get_gps_interface = get_gps_interface;
-    _gps_state->init = 0;
-    D("Zkw hal 3 driver opened.");
+	_gps_state->init = 0;
+
+	D("Zkw hal driver opened.");
     *device = (struct hw_device_t*)dev;
     return 0;
 }
