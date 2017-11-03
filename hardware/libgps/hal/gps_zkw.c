@@ -42,6 +42,7 @@
 
 #ifdef SUPL_ENABLED
 #include "supl.h"
+#include "casaid.h"
 #endif
 /* the name of the qemud-controlled socket */
 
@@ -68,6 +69,7 @@ typedef enum {
 #endif
 
 
+static FILE* log_fd;
 
 /*****************************************************************/
 /*****************************************************************/
@@ -193,10 +195,11 @@ str2float( const char*  p, const char*  end )
 }
 
 #ifdef SUPL_ENABLED
+static int cell_id_flag = 0;
+static int msisdn_flag = 0;
 static supl_ctx_t supl_ctx;
 static AGpsRilCallbacks *agpsRilCallbacks; 
 void supl_main();
-
 void
 agps_ril_init (AGpsRilCallbacks *callbacks) {
 	agpsRilCallbacks = callbacks;	
@@ -216,17 +219,20 @@ agps_ril_set_ref_location (const AGpsRefLocation *agps_reflocation, size_t sz_st
 									 agps_reflocation->u.cellID.mnc,
 									 agps_reflocation->u.cellID.lac,
 									 agps_reflocation->u.cellID.cid);
+		cell_id_flag = 1;
 	} 
 	else if (agps_reflocation->type == AGPS_REF_LOCATION_TYPE_UMTS_CELLID) {
 		supl_set_wcdma_cell(&supl_ctx, agps_reflocation->u.cellID.mcc,
 									   agps_reflocation->u.cellID.mcc,
 									   agps_reflocation->u.cellID.cid);
+
+		cell_id_flag = 1;
 	}
 	else {
 		D("No cell info");
 		supl_set_gsm_cell(&supl_ctx, 0, 0, 0, 0);	
 	}
-	supl_main();
+//	supl_main();
 }
 
 void 
@@ -235,7 +241,8 @@ agps_ril_set_set_id (AGpsSetIDType type, const char* setid) {
 	if (type == AGPS_SETID_TYPE_MSISDN) {
 		D("set msisdn");
 		supl_set_msisdn(&supl_ctx, setid);
-		agpsRilCallbacks->request_refloc(AGPS_RIL_REQUEST_REFLOC_CELLID);	
+		msisdn_flag = 1;
+//		agpsRilCallbacks->request_refloc(AGPS_RIL_REQUEST_REFLOC_CELLID);	
 	}
 }
 
@@ -274,7 +281,7 @@ typedef struct {
     GpsSvStatus  sv_status; 
 	int		sv_num;
     int     sv_status_changed;
-	int		sv_used_in_fix[MAX_SV_PRN];
+	char	sv_used_in_fix[MAX_SV_PRN];
 #endif
     gps_location_callback  callback;
     gps_nmea_callback nmea_callback;
@@ -587,7 +594,9 @@ nmea_reader_parse( NmeaReader*  r )
     Token          tok;
 	int			   sv_type;
 
+#if NMEA_DEBUG
     D("Received: '%.*s'", r->pos, r->in);
+#endif
     if (r->pos < 9) {
         D("Too short. discarded.");
         return;
@@ -613,15 +622,15 @@ nmea_reader_parse( NmeaReader*  r )
 
 	if (memcmp(tok.p, "BD", 2) == 0) {
 		sv_type = BDS_SV;
-		D("BDS satellites");
+		// D("BDS satellites");
 	}
 	else if (memcmp(tok.p, "GL", 2) == 0 ) {
 		sv_type = GLONASS_SV;
-		D("GLONASS satellites");
+		// D("GLONASS satellites");
 	}
 	else {
 		sv_type = GPS_SV;
-		D("GPS satellites");
+		// D("GPS satellites");
 	}	
     // ignore first two characters.
     tok.p += 2;
@@ -644,7 +653,7 @@ nmea_reader_parse( NmeaReader*  r )
                                           tok_longitudeHemi.p[0]);
             nmea_reader_update_altitude(r, tok_altitude, tok_altitudeUnits);
         }
-		memset(r->sv_used_in_fix, 0, sizeof(MAX_SV_PRN));	
+		memset(r->sv_used_in_fix, 0, MAX_SV_PRN);	
     } else if ( !memcmp(tok.p, "GSA", 3) ) {
 #if GPS_SV_INCLUDE
 
@@ -679,7 +688,9 @@ nmea_reader_parse( NmeaReader*  r )
         Token  tok_bearing       = nmea_tokenizer_get(tzer,8);
         Token  tok_date          = nmea_tokenizer_get(tzer,9);
 
+#if NMEA_DEBUG
         D("in RMC, fixStatus=%c", tok_fixStatus.p[0]);
+#endif
         if (tok_fixStatus.p[0] == 'A')
         {
             nmea_reader_update_date( r, tok_date, tok_time );
@@ -745,8 +756,9 @@ nmea_reader_parse( NmeaReader*  r )
                 //r->sv_status_changed = 1;
             }
 			*/
-        
+#if NMEA_DEBUG   
 			D("GSV message with total satellites %d", noSatellites);   
+#endif
         
 		}
   //       else if (noSatellites == 0) { 
@@ -772,7 +784,7 @@ nmea_reader_parse( NmeaReader*  r )
 		r->fix.flags |=GPS_LOCATION_HAS_ACCURACY;  
 		r->fix.flags |=GPS_LOCATION_HAS_BEARING;  
 		r->fix.flags |=GPS_LOCATION_HAS_ALTITUDE;  
-#if GPS_DEBUG
+#if NMEA_DEBUG
         char   temp[256];
         char*  p   = temp;
         char*  end = p + sizeof(temp);
@@ -806,7 +818,7 @@ nmea_reader_parse( NmeaReader*  r )
             r->fix.flags = 0;
         }
         else {
-            D("no callback, keeping data until needed !");
+            // D("no callback, keeping data until needed !");
         }
         // if (r->status_callback) {
         //     r->status.status = GPS_STATUS_ENGINE_OFF;
@@ -815,18 +827,18 @@ nmea_reader_parse( NmeaReader*  r )
     }
 #if GPS_SV_INCLUDE
     if ( r->sv_status_changed == 1 ) {
-		D("Reprot sv status 1.");
+		// D("Reprot sv status 1.");
         r->sv_status_changed = 0;
         if (r->sv_callback) {            
-			D("Reprot sv status 2.");
+			// D("Reprot sv status 2.");
             nmea_reader_encode_sv_status(r);            
             r->sv_callback(&r->sv_status);
 
 			r->sv_status.num_svs = 0;
-			memset(r->sv_used_in_fix, 0, sizeof( MAX_SV_PRN ));	
+			memset(r->sv_used_in_fix, 0, MAX_SV_PRN);	
         }
 		else{
-			D("no sv callback, keeping data until needed !");
+			// D("no sv callback, keeping data until needed !");
 		}
     }
 #endif
@@ -1030,15 +1042,86 @@ static int supl_consume_1(supl_assist_t *ctx) {
   return 1;
 }
 
+static int supl2casaid(supl_assist_t *pSupldat, unsigned char *pAidData) {
+	D("SUPL 2 Casic Aid.");
+	GPS_FIX_EPHEMERIS_STR uTempGpsEph;
+	AID_INI_STR uTempAidIni;
+	FIX_UTC_STR uTempUtc;
+	FIX_IONO_STR uTempIon;
+	
+	int ch;
+	int aidDataLen = 0;
+
+	memset(&uTempAidIni, 0, sizeof(AID_INI_STR));
+	supl2casicIni(pSupldat, &uTempAidIni);
+	if (uTempAidIni.flags) {
+		aidDataLen += msgPacketSend(ID_AID_INI, 		(int *)(&uTempAidIni), 	sizeof(uTempAidIni),			pAidData + aidDataLen);
+		D("Pack Casic Ini message.");
+	}
+	for (ch = 0; ch < pSupldat->cnt_eph; ch++) {
+		if (pSupldat->set & SUPL_RRLP_ASSIST_REFTIME) {
+			memset(&uTempGpsEph, 0, sizeof(GPS_FIX_EPHEMERIS_STR));
+			supl2casicEph((unsigned short)pSupldat->time.gps_week, &pSupldat->eph[ch], &uTempGpsEph);
+			if (uTempGpsEph.valid != NAVIGATION_MESSAGE_AVAILABLE)
+				continue;
+			aidDataLen += msgPacketSend(ID_RXM_GPS_EPH, 	(int *)(&uTempGpsEph),	sizeof(GPS_FIX_EPHEMERIS_STR),	pAidData + aidDataLen);
+			D("Pack Casic Eph message %d.", ch);
+		}
+	}
+
+	if (pSupldat->set & SUPL_RRLP_ASSIST_UTC) {
+		memset(&uTempUtc, 0, sizeof(FIX_UTC_STR));
+		supl2casicUtc(&pSupldat->utc, &uTempUtc);
+		if (uTempUtc.valid == NAVIGATION_MESSAGE_AVAILABLE) {
+			aidDataLen += msgPacketSend(ID_RXM_GPS_UTC, 	(int *)(&uTempUtc),		sizeof(FIX_UTC_STR),			pAidData + aidDataLen);
+			D("Pack Casic GPS_UTC message.");
+		}
+	}
+
+	if (pSupldat->set & SUPL_RRLP_ASSIST_IONO) {
+		memset(&uTempIon, 0, sizeof(FIX_IONO_STR));
+		supl2casicIon(&pSupldat->iono, &uTempIon);
+		if (uTempIon.valid == NAVIGATION_MESSAGE_AVAILABLE) {
+			aidDataLen += msgPacketSend(ID_RXM_GPS_ION, 	(int *)(&uTempIon),		sizeof(FIX_IONO_STR),			pAidData + aidDataLen);
+			D("Pack Casic GPS_ION message.");
+		}
+	}
+
+	return aidDataLen;
+}
+
 void supl_thread(void *arg) {
 	GpsState *state = (GpsState *)arg;
+	/*
+	char reboot_cmd[] = "$PCAS10,2*1E\r\n"; 
+	write(state->fd, reboot_cmd, strlen(reboot_cmd));
+	*/
+ 
+	cell_id_flag = 0;
+	msisdn_flag = 0;
+	supl_ctx_new(&supl_ctx);
+	agpsRilCallbacks->request_refloc(AGPS_RIL_REQUEST_REFLOC_CELLID);
+	agpsRilCallbacks->request_setid(AGPS_RIL_REQUEST_SETID_MSISDN);
+	usleep(2000 * 1000);
+
+	if (cell_id_flag == 0) {
+		D("Failed to fetch cell id.");
+//		return;
+	}
+
+	if (msisdn_flag == 0) {
+		D("Failed to fetch msisdn.");
+//		return;
+	}
+
 	int err;
 	char *server;
 	supl_assist_t assist;
 	
 	server = "supl.qxwz.com";	
 	
-	// supl_set_gsm_cell(&ctx, 460, 0, 0x5814, 0x9584);
+	memcpy(supl_ctx.p.msisdn, "\xFF\xFF\x91\x94\x48\x45\x83\x98", 8);
+	supl_set_gsm_cell(&supl_ctx, 460, 0, 0x5814, 0x9584);
 	supl_request(&supl_ctx, 0);
 
 	err = supl_get_assist(&supl_ctx, server, &assist);
@@ -1048,6 +1131,32 @@ void supl_thread(void *arg) {
 		return;
 	}	
 	supl_consume_1(&assist);
+
+	unsigned char aid_buffer[4096];
+	int len = supl2casaid(&assist, aid_buffer);
+	FILE *f = fopen("/data/agpshal.bin", "wb");
+	if (f != NULL) {
+		fwrite(aid_buffer, 1, len, f);
+		fclose(f);	
+	}
+	int block_size = 256;
+	if (len > 0) {
+/*
+		unsigned char *p = aid_buffer;
+		while (p < aid_buffer + len) {
+			int sz = block_size;
+			if (aid_buffer - p < sz) {
+				sz = aid_buffer + len - p;
+			}
+			write(state->fd, p, sz);
+			p += sz;
+			usleep(10 * 1000);
+		}
+*/
+		write(state->fd, aid_buffer, len);
+		D("Send CasicAidMessage");
+	}
+	
 	supl_ctx_free(&supl_ctx);
 }
 
@@ -1108,8 +1217,8 @@ gps_state_start( GpsState*  s )
 
 #ifdef SUPL_ENABLED
 	// supl_main(s);
-	supl_ctx_new(&supl_ctx);
-	agpsRilCallbacks->request_setid(AGPS_RIL_REQUEST_SETID_MSISDN);
+	supl_main();
+//	agpsRilCallbacks->request_setid(AGPS_RIL_REQUEST_SETID_MSISDN);
 #endif
 }
 
@@ -1197,7 +1306,9 @@ gps_state_thread( void*  arg )
                 D("epoll_wait() unexpected error: %s", strerror(errno));
             continue;
         }
+#if NMEA_DEBUG
         D("gps thread received %d events", nevents);
+#endif
         for (ne = 0; ne < nevents; ne++) {
             if ((events[ne].events & (EPOLLERR|EPOLLHUP)) != 0) {
                 D("EPOLLERR or EPOLLHUP after epoll_wait() !?");
@@ -1261,7 +1372,7 @@ gps_state_thread( void*  arg )
                 else if (fd == gps_fd)
                 {
                     char  buff[128];
-                    D("gps fd event");
+                    // D("gps fd event");
                     for (;;) {
                         int  nn, ret;
 
@@ -1275,10 +1386,14 @@ gps_state_thread( void*  arg )
                         }
 
                         D("gps fd received: %.*s bytes: %d", ret, buff, ret);
+						if (log_fd) {
+							fwrite(buff, 1, ret, log_fd);
+							fflush(log_fd);
+						}
                         for (nn = 0; nn < ret; nn++)
                             nmea_reader_addc( reader, buff[nn] );
                     }
-                    D("gps fd event end");
+                    // D("gps fd event end");
                 }
                 else
                 {
@@ -1289,7 +1404,6 @@ gps_state_thread( void*  arg )
     }
 
 }
-
 
 // open tty
 static void
@@ -1302,7 +1416,7 @@ gps_state_init( GpsState*  state)
     state->control[1] = -1;
     state->fd         = -1;
     
-
+	log_fd = fopen("/data/gnss_output.txt", "wb");
 
     strcpy(state->device, GNSS_TTY);
     state->speed = GNSS_SPEED;

@@ -22,6 +22,7 @@ LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
 LOCAL_CFLAGS := -DHAVE_GPS_HARDWARE
 LOCAL_SHARED_LIBRARIES := liblog libcutils libhardware libc libutils
 LOCAL_SRC_FILES := supl.c \
+				   casaid.c \
 				   gps_zkw.c
 
 ifeq ($(SUPL_ENABLED),1)
