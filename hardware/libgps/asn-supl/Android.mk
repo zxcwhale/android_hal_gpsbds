@@ -3,110 +3,267 @@ include $(CLEAR_VARS)
 LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
 LOCAL_SHARED_LIBRARIES := liblog libcutils libhardware libc libutils
 
-LOCAL_SRC_FILES :=  Version.c \
-    SessionID.c	\
-	SetSessionID.c	\
-	SETId.c	\
-	SlpSessionID.c	\
-	IPAddress.c	\
-	SLPAddress.c	\
-	FQDN.c	\
-	Ver.c	\
-	LocationId.c	\
-	Status.c	\
-	CellInfo.c	\
-	Position.c	\
-	PositionEstimate.c	\
-	AltitudeInfo.c	\
-	CdmaCellInformation.c	\
-	GsmCellInformation.c	\
-	WcdmaCellInformation.c	\
-	FrequencyInfo.c	\
-	FrequencyInfoFDD.c	\
-	FrequencyInfoTDD.c	\
-	UARFCN.c	\
-	NMR.c	\
-	NMRelement.c	\
-	MeasuredResultsList.c	\
-	MeasuredResults.c	\
-	CellMeasuredResultsList.c	\
-	UTRA-CarrierRSSI.c	\
-	CellMeasuredResults.c	\
-	CellParametersID.c	\
-	TGSN.c	\
-	PrimaryCCPCH-RSCP.c	\
-	TimeslotISCP.c	\
-	TimeslotISCP-List.c	\
-	PrimaryCPICH-Info.c	\
-	CPICH-Ec-N0.c	\
-	CPICH-RSCP.c	\
-	Pathloss.c	\
-	QoP.c	\
-	Velocity.c	\
-	Horvel.c	\
-	Horandvervel.c	\
-	Horveluncert.c	\
-	Horandveruncert.c	\
-	StatusCode.c	\
-	PosMethod.c	\
-	SUPLEND.c	\
-	SUPLINIT.c	\
-	Notification.c	\
-	NotificationType.c	\
-	EncodingType.c	\
-	FormatIndicator.c	\
-	SLPMode.c	\
-	MAC.c	\
-	KeyIdentity.c	\
-	SUPLPOS.c	\
-	PosPayLoad.c	\
-	SUPLPOSINIT.c	\
-	RequestedAssistData.c	\
-	XNavigationModel.c	\
-	SatelliteInfo.c	\
-	SatelliteInfoElement.c	\
-	SUPLRESPONSE.c	\
-	SETAuthKey.c	\
-	KeyIdentity4.c	\
-	SUPLSTART.c	\
-	SETCapabilities.c	\
-	PosTechnology.c	\
-	PrefMethod.c	\
-	PosProtocol.c	\
-	ULP-PDU.c	\
-	UlpMessage.c	\
-	DUMMY.c	
-
-LOCAL_SRC_FILES+=BOOLEAN.c
-LOCAL_SRC_FILES+=GeneralizedTime.c
-LOCAL_SRC_FILES+=IA5String.c
-LOCAL_SRC_FILES+=INTEGER.c
-LOCAL_SRC_FILES+=NativeEnumerated.c
-LOCAL_SRC_FILES+=NativeInteger.c
-LOCAL_SRC_FILES+=UTCTime.c
-LOCAL_SRC_FILES+=VisibleString.c
+LOCAL_SRC_FILES+=AllowedReportingType.c
+LOCAL_SRC_FILES+=AltitudeInfo.c
+LOCAL_SRC_FILES+=ApplicationID.c
+LOCAL_SRC_FILES+=AreaEventParams.c
+LOCAL_SRC_FILES+=AreaEventType.c
+LOCAL_SRC_FILES+=AreaId.c
+LOCAL_SRC_FILES+=AreaIdList.c
+LOCAL_SRC_FILES+=AreaIdSet.c
+LOCAL_SRC_FILES+=AreaIdSetType.c
+LOCAL_SRC_FILES+=asn_codecs_prim.c
 LOCAL_SRC_FILES+=asn_SEQUENCE_OF.c
 LOCAL_SRC_FILES+=asn_SET_OF.c
+LOCAL_SRC_FILES+=BasicProtectionParams.c
+LOCAL_SRC_FILES+=BatchRepCap.c
+LOCAL_SRC_FILES+=BatchRepConditions.c
+LOCAL_SRC_FILES+=BatchRepType.c
+LOCAL_SRC_FILES+=ber_decoder.c
+LOCAL_SRC_FILES+=ber_tlv_length.c
+LOCAL_SRC_FILES+=ber_tlv_tag.c
+LOCAL_SRC_FILES+=BIT_STRING.c
+LOCAL_SRC_FILES+=BOOLEAN.c
+LOCAL_SRC_FILES+=CauseCode.c
+LOCAL_SRC_FILES+=CDMAAreaId.c
+LOCAL_SRC_FILES+=CdmaCellInformation.c
+LOCAL_SRC_FILES+=CellGlobalIdEUTRA.c
+LOCAL_SRC_FILES+=CellIdentity.c
+LOCAL_SRC_FILES+=CellInfo.c
+LOCAL_SRC_FILES+=CellMeasuredResults.c
+LOCAL_SRC_FILES+=CellMeasuredResultsList.c
+LOCAL_SRC_FILES+=CellParametersID.c
+LOCAL_SRC_FILES+=ChipRate.c
+LOCAL_SRC_FILES+=CircularArea.c
+LOCAL_SRC_FILES+=constraints.c
 LOCAL_SRC_FILES+=constr_CHOICE.c
 LOCAL_SRC_FILES+=constr_SEQUENCE.c
 LOCAL_SRC_FILES+=constr_SEQUENCE_OF.c
 LOCAL_SRC_FILES+=constr_SET_OF.c
-LOCAL_SRC_FILES+=OCTET_STRING.c
-LOCAL_SRC_FILES+=BIT_STRING.c
-LOCAL_SRC_FILES+=asn_codecs_prim.c
-LOCAL_SRC_FILES+=ber_tlv_length.c
-LOCAL_SRC_FILES+=ber_tlv_tag.c
-LOCAL_SRC_FILES+=ber_decoder.c
-LOCAL_SRC_FILES+=der_encoder.c
 LOCAL_SRC_FILES+=constr_TYPE.c
-LOCAL_SRC_FILES+=constraints.c
-LOCAL_SRC_FILES+=xer_support.c
-LOCAL_SRC_FILES+=xer_decoder.c
-LOCAL_SRC_FILES+=xer_encoder.c
-LOCAL_SRC_FILES+=per_support.c
+LOCAL_SRC_FILES+=Coordinate.c
+LOCAL_SRC_FILES+=CPICH-Ec-N0.c
+LOCAL_SRC_FILES+=CPICH-RSCP.c
+LOCAL_SRC_FILES+=der_encoder.c
+LOCAL_SRC_FILES+=DGANSS-Sig-Id-Req.c
+LOCAL_SRC_FILES+=EllipticalArea.c
+LOCAL_SRC_FILES+=EncodingType.c
+LOCAL_SRC_FILES+=EventTriggerCapabilities.c
+LOCAL_SRC_FILES+=ExtendedEphCheck.c
+LOCAL_SRC_FILES+=ExtendedEphemeris.c
+LOCAL_SRC_FILES+=FormatIndicator.c
+LOCAL_SRC_FILES+=FQDN.c
+LOCAL_SRC_FILES+=FrequencyInfo.c
+LOCAL_SRC_FILES+=FrequencyInfoFDD.c
+LOCAL_SRC_FILES+=FrequencyInfoTDD.c
+LOCAL_SRC_FILES+=GanssAdditionalDataChoices.c
+LOCAL_SRC_FILES+=GanssDataBits.c
+LOCAL_SRC_FILES+=GanssExtendedEphCheck.c
+LOCAL_SRC_FILES+=GANSSextEphTime.c
+LOCAL_SRC_FILES+=GanssNavigationModelData.c
+LOCAL_SRC_FILES+=GanssReqGenericData.c
+LOCAL_SRC_FILES+=GanssRequestedCommonAssistanceDataList.c
+LOCAL_SRC_FILES+=GanssRequestedGenericAssistanceDataList.c
+LOCAL_SRC_FILES+=GANSSSignals.c
+LOCAL_SRC_FILES+=GANSSSignalsDescription.c
+LOCAL_SRC_FILES+=GANSSsignalsInfo.c
+LOCAL_SRC_FILES+=GeneralizedTime.c
+LOCAL_SRC_FILES+=GeoAreaIndex.c
+LOCAL_SRC_FILES+=GeoAreaMappingList.c
+LOCAL_SRC_FILES+=GeoAreaShapesSupported.c
+LOCAL_SRC_FILES+=GeographicTargetArea.c
+LOCAL_SRC_FILES+=GeographicTargetAreaList.c
+LOCAL_SRC_FILES+=GNSSPosTechnology.c
+LOCAL_SRC_FILES+=GSMAreaId.c
+LOCAL_SRC_FILES+=GsmCellInformation.c
+LOCAL_SRC_FILES+=HistoricReporting.c
+LOCAL_SRC_FILES+=Horandveruncert.c
+LOCAL_SRC_FILES+=Horandvervel.c
+LOCAL_SRC_FILES+=Horvel.c
+LOCAL_SRC_FILES+=Horveluncert.c
+LOCAL_SRC_FILES+=HRPDAreaId.c
+LOCAL_SRC_FILES+=HrpdCellInformation.c
+LOCAL_SRC_FILES+=IA5String.c
+LOCAL_SRC_FILES+=INTEGER.c
+LOCAL_SRC_FILES+=IPAddress.c
+LOCAL_SRC_FILES+=KeyIdentity4.c
+LOCAL_SRC_FILES+=KeyIdentity.c
+LOCAL_SRC_FILES+=LocationData.c
+LOCAL_SRC_FILES+=LocationEncodingDescriptor.c
+LOCAL_SRC_FILES+=LocationId.c
+LOCAL_SRC_FILES+=LocationIdData.c
+LOCAL_SRC_FILES+=LTEAreaId.c
+LOCAL_SRC_FILES+=LteCellInformation.c
+LOCAL_SRC_FILES+=MAC.c
+LOCAL_SRC_FILES+=MCC.c
+LOCAL_SRC_FILES+=MCC-MNC-Digit.c
+LOCAL_SRC_FILES+=MeasResultEUTRA.c
+LOCAL_SRC_FILES+=MeasResultListEUTRA.c
+LOCAL_SRC_FILES+=MeasuredResults.c
+LOCAL_SRC_FILES+=MeasuredResultsList.c
+LOCAL_SRC_FILES+=MNC.c
+LOCAL_SRC_FILES+=MultipleLocationIds.c
+LOCAL_SRC_FILES+=NativeEnumerated.c
+LOCAL_SRC_FILES+=NativeInteger.c
+LOCAL_SRC_FILES+=NMR.c
+LOCAL_SRC_FILES+=NMRelement.c
+LOCAL_SRC_FILES+=Notification.c
+LOCAL_SRC_FILES+=NotificationMode.c
+LOCAL_SRC_FILES+=NotificationResponse.c
+LOCAL_SRC_FILES+=NotificationType.c
+LOCAL_SRC_FILES+=NULL.c
+LOCAL_SRC_FILES+=OCTET_STRING.c
+LOCAL_SRC_FILES+=Pathloss.c
 LOCAL_SRC_FILES+=per_decoder.c
 LOCAL_SRC_FILES+=per_encoder.c
+LOCAL_SRC_FILES+=PeriodicParams.c
 LOCAL_SRC_FILES+=per_opentype.c
+LOCAL_SRC_FILES+=per_support.c
+LOCAL_SRC_FILES+=PhysCellId.c
+LOCAL_SRC_FILES+=PLMN-Identity.c
+LOCAL_SRC_FILES+=PolygonArea.c
+LOCAL_SRC_FILES+=PolygonDescription.c
+LOCAL_SRC_FILES+=Position.c
+LOCAL_SRC_FILES+=PositionEstimate.c
+LOCAL_SRC_FILES+=PosMethod.c
+LOCAL_SRC_FILES+=PosPayLoad.c
+LOCAL_SRC_FILES+=PosProtocol.c
+LOCAL_SRC_FILES+=PosProtocolVersion3GPP2.c
+LOCAL_SRC_FILES+=PosProtocolVersion3GPP.c
+LOCAL_SRC_FILES+=PosTechnology.c
+LOCAL_SRC_FILES+=PrefMethod.c
+LOCAL_SRC_FILES+=PrimaryCCPCH-RSCP.c
+LOCAL_SRC_FILES+=PrimaryCPICH-Info.c
+LOCAL_SRC_FILES+=ProtectionLevel.c
+LOCAL_SRC_FILES+=ProtLevel.c
+LOCAL_SRC_FILES+=QoP.c
+LOCAL_SRC_FILES+=RelativeTime.c
+LOCAL_SRC_FILES+=RepeatedReportingParams.c
+LOCAL_SRC_FILES+=RepMode.c
+LOCAL_SRC_FILES+=RepModee.c
+LOCAL_SRC_FILES+=ReportData.c
+LOCAL_SRC_FILES+=ReportDataList.c
+LOCAL_SRC_FILES+=ReportedLocation.c
+LOCAL_SRC_FILES+=ReportingCap.c
+LOCAL_SRC_FILES+=ReportingCriteria.c
+LOCAL_SRC_FILES+=ReportingMode.c
+LOCAL_SRC_FILES+=ReqDataBitAssistanceList.c
+LOCAL_SRC_FILES+=RequestedAssistData.c
+LOCAL_SRC_FILES+=ResultCode.c
+LOCAL_SRC_FILES+=RSRP-Range.c
+LOCAL_SRC_FILES+=RSRQ-Range.c
+LOCAL_SRC_FILES+=RTD.c
+LOCAL_SRC_FILES+=RTDUnits.c
+LOCAL_SRC_FILES+=SatelliteInfo.c
+LOCAL_SRC_FILES+=SatelliteInfoElement.c
+LOCAL_SRC_FILES+=SatellitesListRelatedData.c
+LOCAL_SRC_FILES+=SatellitesListRelatedDataList.c
+LOCAL_SRC_FILES+=ServiceCapabilities.c
+LOCAL_SRC_FILES+=ServicesSupported.c
+LOCAL_SRC_FILES+=SessionCapabilities.c
+LOCAL_SRC_FILES+=SessionID.c
+LOCAL_SRC_FILES+=SessionInformation.c
+LOCAL_SRC_FILES+=SessionList.c
+LOCAL_SRC_FILES+=SETAuthKey.c
+LOCAL_SRC_FILES+=SETCapabilities.c
+LOCAL_SRC_FILES+=SET-GANSSReferenceTime.c
+LOCAL_SRC_FILES+=SETId.c
+LOCAL_SRC_FILES+=SetSessionID.c
+LOCAL_SRC_FILES+=SLPAddress.c
+LOCAL_SRC_FILES+=SLPMode.c
+LOCAL_SRC_FILES+=SlpSessionID.c
+LOCAL_SRC_FILES+=SPCSETKey.c
+LOCAL_SRC_FILES+=SPCSETKeylifetime.c
+LOCAL_SRC_FILES+=SPCTID.c
+LOCAL_SRC_FILES+=Status.c
+LOCAL_SRC_FILES+=StatusCode.c
+LOCAL_SRC_FILES+=SUPLAUTHREQ.c
+LOCAL_SRC_FILES+=SUPLAUTHRESP.c
+LOCAL_SRC_FILES+=SUPLEND.c
+LOCAL_SRC_FILES+=SUPLINIT.c
+LOCAL_SRC_FILES+=SUPLPOS.c
+LOCAL_SRC_FILES+=SUPLPOSINIT.c
+LOCAL_SRC_FILES+=SUPLRESPONSE.c
+LOCAL_SRC_FILES+=SUPLSTART.c
+LOCAL_SRC_FILES+=Supported3GPP2PosProtocolVersion.c
+LOCAL_SRC_FILES+=SupportedBearers.c
+LOCAL_SRC_FILES+=SupportedNetworkInformation.c
+LOCAL_SRC_FILES+=SupportedWCDMAInfo.c
+LOCAL_SRC_FILES+=SupportedWLANApData.c
+LOCAL_SRC_FILES+=SupportedWLANApsChannel11a.c
+LOCAL_SRC_FILES+=SupportedWLANApsChannel11bg.c
+LOCAL_SRC_FILES+=SupportedWLANApsList.c
+LOCAL_SRC_FILES+=SupportedWLANInfo.c
+LOCAL_SRC_FILES+=TAResolution.c
+LOCAL_SRC_FILES+=TGSN.c
+LOCAL_SRC_FILES+=ThirdParty.c
+LOCAL_SRC_FILES+=ThirdPartyID.c
+LOCAL_SRC_FILES+=TimeslotISCP.c
+LOCAL_SRC_FILES+=TimeslotISCP-List.c
+LOCAL_SRC_FILES+=TimeStamp.c
+LOCAL_SRC_FILES+=TimeWindow.c
+LOCAL_SRC_FILES+=TimingAdvance.c
+LOCAL_SRC_FILES+=TrackingAreaCode.c
+LOCAL_SRC_FILES+=TriggerParams.c
+LOCAL_SRC_FILES+=TriggerType.c
+LOCAL_SRC_FILES+=UARFCN.c
+LOCAL_SRC_FILES+=UlpMessage.c
+LOCAL_SRC_FILES+=ULP-PDU.c
+LOCAL_SRC_FILES+=UMBAreaId.c
+LOCAL_SRC_FILES+=UmbCellInformation.c
+LOCAL_SRC_FILES+=UTCTime.c
+LOCAL_SRC_FILES+=UTRA-CarrierRSSI.c
+LOCAL_SRC_FILES+=UTRANGANSSDriftRate.c
+LOCAL_SRC_FILES+=UTRAN-GANSSReferenceTimeAssistance.c
+LOCAL_SRC_FILES+=UTRAN-GANSSReferenceTime.c
+LOCAL_SRC_FILES+=UTRAN-GANSSReferenceTimeResult.c
+LOCAL_SRC_FILES+=UTRANGPSDriftRate.c
+LOCAL_SRC_FILES+=UTRAN-GPSReferenceTimeAssistance.c
+LOCAL_SRC_FILES+=UTRAN-GPSReferenceTime.c
+LOCAL_SRC_FILES+=UTRAN-GPSReferenceTimeResult.c
+LOCAL_SRC_FILES+=Velocity.c
+LOCAL_SRC_FILES+=Ver2-CellInfo-extension.c
+LOCAL_SRC_FILES+=Ver2-Notification-extension.c
+LOCAL_SRC_FILES+=Ver2-PosPayLoad-extension.c
+LOCAL_SRC_FILES+=Ver2-PosProtocol-extension.c
+LOCAL_SRC_FILES+=Ver2-PosTechnology-extension.c
+LOCAL_SRC_FILES+=Ver2-RequestedAssistData-extension.c
+LOCAL_SRC_FILES+=Ver2-SETCapabilities-extension.c
+LOCAL_SRC_FILES+=Ver2-SUPL-END-extension.c
+LOCAL_SRC_FILES+=Ver2-SUPL-INIT-extension.c
+LOCAL_SRC_FILES+=Ver2-SUPLNOTIFY.c
+LOCAL_SRC_FILES+=Ver2-SUPLNOTIFYRESPONSE.c
+LOCAL_SRC_FILES+=Ver2-SUPL-POS-extension.c
+LOCAL_SRC_FILES+=Ver2-SUPL-POS-INIT-extension.c
+LOCAL_SRC_FILES+=Ver2-SUPLREPORT.c
+LOCAL_SRC_FILES+=Ver2-SUPL-RESPONSE-extension.c
+LOCAL_SRC_FILES+=Ver2-SUPLSETINIT.c
+LOCAL_SRC_FILES+=Ver2-SUPL-START-extension.c
+LOCAL_SRC_FILES+=Ver2-SUPLTRIGGEREDRESPONSE.c
+LOCAL_SRC_FILES+=Ver2-SUPLTRIGGEREDSTART.c
+LOCAL_SRC_FILES+=Ver2-SUPLTRIGGEREDSTOP.c
+LOCAL_SRC_FILES+=Ver.c
+LOCAL_SRC_FILES+=Version.c
+LOCAL_SRC_FILES+=VisibleString.c
+LOCAL_SRC_FILES+=WCDMAAreaId.c
+LOCAL_SRC_FILES+=WcdmaCellInformation.c
+LOCAL_SRC_FILES+=WimaxAreaId.c
+LOCAL_SRC_FILES+=WimaxBsID.c
+LOCAL_SRC_FILES+=WimaxBSInformation.c
+LOCAL_SRC_FILES+=WimaxNMR.c
+LOCAL_SRC_FILES+=WimaxNMRList.c
+LOCAL_SRC_FILES+=WimaxRTD.c
+LOCAL_SRC_FILES+=WlanAPInformation.c
+LOCAL_SRC_FILES+=WLANAreaId.c
+LOCAL_SRC_FILES+=xer_decoder.c
+LOCAL_SRC_FILES+=xer_encoder.c
+LOCAL_SRC_FILES+=xer_support.c
+LOCAL_SRC_FILES+=XGANSSPositioningMethodTypes.c
+LOCAL_SRC_FILES+=XGANSSPositionMethod.c
+LOCAL_SRC_FILES+=XGANSSPositionMethods.c
+LOCAL_SRC_FILES+=XGPSTime.c
+LOCAL_SRC_FILES+=XNavigationModel.c
+LOCAL_SRC_FILES+=XPositionData.c
 
 LOCAL_MODULE := libasnsupl
 LOCAL_MODULE_TAGS := debug eng

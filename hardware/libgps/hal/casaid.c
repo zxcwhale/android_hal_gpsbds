@@ -127,7 +127,7 @@ void supl2casicIon(struct supl_ionospheric_s *pSupl, FIX_IONO_STR *pCasic)
 	pCasic->alpha0			= pSupl->a0;
 	pCasic->alpha1			= pSupl->a1;
 	pCasic->alpha2			= pSupl->a2;
-	pCasic->alpha3			= 0;
+	pCasic->alpha3			= pSupl->a3;
 
 	pCasic->beta0			= pSupl->b0;
 	pCasic->beta1			= pSupl->b1;

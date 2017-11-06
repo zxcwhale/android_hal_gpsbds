@@ -777,7 +777,9 @@ nmea_reader_parse( NmeaReader*  r )
 #endif
     }else {
         tok.p -= 2;
+#if NMEA_DEBUG
         D("unknown sentence '%.*s", tok.end-tok.p, tok.p);
+#endif
     }
 	if (r->fix.flags & GPS_LOCATION_HAS_LAT_LONG) {
 		r->fix.flags |=GPS_LOCATION_HAS_SPEED;  
@@ -1102,7 +1104,7 @@ void supl_thread(void *arg) {
 	supl_ctx_new(&supl_ctx);
 	agpsRilCallbacks->request_refloc(AGPS_RIL_REQUEST_REFLOC_CELLID);
 	agpsRilCallbacks->request_setid(AGPS_RIL_REQUEST_SETID_MSISDN);
-	usleep(2000 * 1000);
+	usleep(1000 * 1000);
 
 	if (cell_id_flag == 0) {
 		D("Failed to fetch cell id.");
@@ -1116,15 +1118,20 @@ void supl_thread(void *arg) {
 
 	int err;
 	char *server;
+	char *port;
 	supl_assist_t assist;
 	
 	server = "supl.qxwz.com";	
+	port = "7275";
 	
-	memcpy(supl_ctx.p.msisdn, "\xFF\xFF\x91\x94\x48\x45\x83\x98", 8);
-	supl_set_gsm_cell(&supl_ctx, 460, 0, 0x5814, 0x9584);
+	
+	//memcpy(supl_ctx.p.msisdn, "\xFF\xFF\x91\x94\x48\x45\x83\x98", 8);
+	//supl_set_gsm_cell(&supl_ctx, 460, 0, 0x5814, 0x9584);
+	supl_set_msisdn(&supl_ctx, "+8613588889999");
+	supl_set_lte_cell(&supl_ctx, 460, 0, 22548, 193790209, 0);
 	supl_request(&supl_ctx, 0);
 
-	err = supl_get_assist(&supl_ctx, server, &assist);
+	err = supl_get_assist(&supl_ctx, server, port, &assist);
 	
 	if (err < 0) {
 		D("SUPL protocol error %d\n", err);

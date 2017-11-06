@@ -88,7 +88,8 @@ struct supl_almanac_s {
   int32_t M0;
   int16_t AF0;
   int16_t AF1;
-  // int32_t health;
+  u_int8_t SV_health;
+  u_int8_t fill[3];
 };
 		     
 struct supl_ephemeris_s {
@@ -127,7 +128,7 @@ struct supl_ephemeris_s {
 };
 
 struct supl_ionospheric_s {
-    int8_t a0, a1, a2, b0, b1, b2, b3;
+    int8_t a0, a1, a2, a3, b0, b1, b2, b3;
 };
 
 struct supl_utc_s {
@@ -177,6 +178,10 @@ typedef struct supl_param_s {
   int request;
 
   struct {
+		int mcc, mnc, tac, ci, phys_ci;
+  }lte;
+
+  struct {
     int mcc, mnc, lac, ci;
   } gsm;
 
@@ -209,15 +214,17 @@ typedef struct supl_ctx_s {
 
 int supl_ctx_new(supl_ctx_t *ctx);
 int supl_ctx_free(supl_ctx_t *ctx);
+
 void supl_set_msisdn(supl_ctx_t *ctx, const char *msisdn);
+void supl_set_lte_cell(supl_ctx_t *ctx, int mcc, int mns, int tac, int ci, int phys_ci);
 void supl_set_gsm_cell(supl_ctx_t *ctx, int mcc, int mns, int lac, int ci);
 void supl_set_wcdma_cell(supl_ctx_t *ctx, int mcc, int mns, int uc);
 void supl_set_gsm_cell_known(supl_ctx_t *ctx, int mcc, int mns, int lac, int ci, double lat, double lon, int uncert);
-void supl_set_server(supl_ctx_t *ctx, char *server);
+void supl_set_server(supl_ctx_t *ctx, char *server, char *port);
 void supl_set_fd(supl_ctx_t *ctx, int fd);
 void supl_request(supl_ctx_t *ctx, int flags);
 
-int supl_get_assist(supl_ctx_t *ctx, char *server, supl_assist_t *assist);
+int supl_get_assist(supl_ctx_t *ctx, char *server, char *port, supl_assist_t *assist);
 void supl_set_debug(FILE *log, int flags);
 
 /*
@@ -244,7 +251,7 @@ int supl_ulp_decode(supl_ulp_t *pdu);
 int supl_decode_rrlp(supl_ulp_t *pdu, PDU_t **rrlp);
 int supl_collect_rrlp(supl_assist_t *assist, PDU_t *rrlp, struct timeval *t);
 
-int supl_server_connect(supl_ctx_t *ctx, char *server);
+int supl_server_connect(supl_ctx_t *ctx, char *server, char *port);
 void supl_close(supl_ctx_t *ctx);
 int supl_ulp_send(supl_ctx_t *ctx, supl_ulp_t *pdu);
 int supl_ulp_recv(supl_ctx_t *ctx, supl_ulp_t *pdu);
