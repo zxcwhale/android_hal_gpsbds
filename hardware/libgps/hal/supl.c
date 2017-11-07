@@ -490,7 +490,7 @@ static int pdu_make_ulp_pos_init(supl_ctx_t *ctx, supl_ulp_t *pdu) {
   req_adata->utcModelRequested = 1; //1
   req_adata->ionosphericModelRequested = 1; // 1
   req_adata->referenceLocationRequested = 1;
-  req_adata->almanacRequested = ctx->p.request & SUPL_REQUEST_ALMANAC;
+  req_adata->almanacRequested = 0; //ctx->p.request & SUPL_REQUEST_ALMANAC;
   req_adata->realTimeIntegrityRequested = 1; // 1
   ulp->message.choice.msSUPLPOSINIT.requestedAssistData = req_adata;
 

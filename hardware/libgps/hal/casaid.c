@@ -2,7 +2,7 @@
 #include <string.h>
 #include "casaid.h"
 
-unsigned int msgCheckSum(unsigned int data[], int n)
+unsigned int calc_checksum(unsigned int data[], int n)
 {
 	int i;
 	unsigned int sum = 0;
@@ -15,7 +15,7 @@ unsigned int msgCheckSum(unsigned int data[], int n)
 	return sum;
 }
 
-unsigned int msgPacketSend(int id, int *pMsg, int n, unsigned char *pSendMsg)
+unsigned int cas_make_msg(int id, int *msg, int n, unsigned char *buff)
 {
 	int i;
 	int ckSum;
@@ -33,184 +33,106 @@ unsigned int msgPacketSend(int id, int *pMsg, int n, unsigned char *pSendMsg)
 	ckSum = (id << 16) + n;
 	for (i = 0; i < (n / 4); i++)
 	{
-		ckSum += pMsg[i];
+		ckSum += msg[i];
 	}
 	// 
-	memcpy(pSendMsg, head, 6);
-	memcpy(pSendMsg + 6, (char *)pMsg, n);
-	memcpy(pSendMsg + 6 + n, (char *)(&ckSum), 4);
+	memcpy(buff, head, 6);
+	memcpy(buff + 6, (char *)msg, n);
+	memcpy(buff + 6 + n, (char *)(&ckSum), 4);
 
 	return (n + 10);
 }
 
-void supl2casicIni(supl_assist_t *pSupltp, AID_INI_STR *pCasicIni)
+void supl2cas_ini(supl_assist_t *ctx, AID_INI_STR *cas_ini)
 {
-	pCasicIni->flags		= 0x00;
+	cas_ini->flags		= 0x00;
 
-	if (pSupltp->set & SUPL_RRLP_ASSIST_REFTIME) {
-		pCasicIni->tow			= pSupltp->time.gps_tow * 0.08;
-		pCasicIni->wn			= pSupltp->time.gps_week + 1024;
-		pCasicIni->flags		|= 0x02;
+	if (ctx->set & SUPL_RRLP_ASSIST_REFTIME) {
+		cas_ini->tow	  = ctx->time.gps_tow * 0.08;
+		cas_ini->wn			= ctx->time.gps_week + 1024;
+		cas_ini->flags  |= 0x02;
 	}
 
-	if (pSupltp->set & SUPL_RRLP_ASSIST_REFLOC) {
-		pCasicIni->xOrLat		= pSupltp->pos.lat;
-		pCasicIni->yOrLon		= pSupltp->pos.lon;
-		pCasicIni->zOrAlt		= 0;
-		pCasicIni->posAcc		= 5000;
-		//pCasicIni->posAcc		= pSupltp->pos.uncertainty;
-		//pCasicIni->posAcc		= 10.0*(pow(1.1, pSupltp->pos.uncertainty)-1);
-		pCasicIni->flags		|= 0x21;
+	if (ctx->set & SUPL_RRLP_ASSIST_REFLOC) {
+		cas_ini->xOrLat		= ctx->pos.lat;
+		cas_ini->yOrLon		= ctx->pos.lon;
+		cas_ini->zOrAlt		= 0;
+		cas_ini->posAcc		= 5000;
+		//cas_ini->posAcc		= ctx->pos.uncertainty;
+		//cas_ini->posAcc		= 10.0*(pow(1.1, ctx->pos.uncertainty)-1);
+		cas_ini->flags		|= 0x21;
 	}
 
-	pCasicIni->timeSource	= 0;
+	cas_ini->timeSource	= 0;
 
 }
 
-void supl2casicEph(unsigned short wn, struct supl_ephemeris_s *pSupl, GPS_FIX_EPHEMERIS_STR *pCasic)
+void supl2cas_eph(unsigned short wn, struct supl_ephemeris_s *eph_ctx, GPS_FIX_EPHEMERIS_STR *cas_eph)
 {
-	pCasic->ura				= pSupl->ura;
-	pCasic->svid			= pSupl->prn;
-	pCasic->iodc			= pSupl->IODC;
-	pCasic->kepler.sqra		= pSupl->A_sqrt;
-	pCasic->kepler.es		= pSupl->e;
-	pCasic->kepler.m0		= pSupl->M0;
-	pCasic->kepler.i0		= pSupl->i0;
-	pCasic->kepler.idot		= pSupl->i_dot;
-	pCasic->kepler.omega0	= pSupl->OMEGA_0;
-	pCasic->kepler.omegadot	= pSupl->OMEGA_dot;
-	pCasic->kepler.w		= pSupl->w;
-	pCasic->kepler.deltn	= pSupl->delta_n;
-	pCasic->kepler.cic		= pSupl->Cic;
-	pCasic->kepler.cis		= pSupl->Cis;
-	pCasic->kepler.crc		= pSupl->Crc;
-	pCasic->kepler.crs		= pSupl->Crs;
-	pCasic->kepler.cuc		= pSupl->Cuc;
-	pCasic->kepler.cus		= pSupl->Cus;
-	pCasic->kepler.toe		= pSupl->toe;
-	pCasic->kepler.wne		= wn;
+	cas_eph->ura				  = eph_ctx->ura;
+	cas_eph->svid			    = eph_ctx->prn;
+	cas_eph->iodc			    = eph_ctx->IODC;
+	cas_eph->kepler.sqra	= eph_ctx->A_sqrt;
+	cas_eph->kepler.es		= eph_ctx->e;
+	cas_eph->kepler.m0		= eph_ctx->M0;
+	cas_eph->kepler.i0		= eph_ctx->i0;
+	cas_eph->kepler.idot  = eph_ctx->i_dot;
+	cas_eph->kepler.omega0	  = eph_ctx->OMEGA_0;
+	cas_eph->kepler.omegadot	= eph_ctx->OMEGA_dot;
+	cas_eph->kepler.w		  = eph_ctx->w;
+	cas_eph->kepler.deltn	= eph_ctx->delta_n;
+	cas_eph->kepler.cic		= eph_ctx->Cic;
+	cas_eph->kepler.cis		= eph_ctx->Cis;
+	cas_eph->kepler.crc		= eph_ctx->Crc;
+	cas_eph->kepler.crs		= eph_ctx->Crs;
+	cas_eph->kepler.cuc		= eph_ctx->Cuc;
+	cas_eph->kepler.cus		= eph_ctx->Cus;
+	cas_eph->kepler.toe		= eph_ctx->toe;
+	cas_eph->kepler.wne		= wn;
 	//
-	pCasic->svClock.toc		= pSupl->toc;
-	pCasic->svClock.af0		= pSupl->AF0;
-	pCasic->svClock.af1		= pSupl->AF1;
-	pCasic->svClock.af2		= pSupl->AF2;
-	pCasic->svClock.tgd		= pSupl->tgd;
+	cas_eph->svClock.toc	= eph_ctx->toc;
+	cas_eph->svClock.af0	= eph_ctx->AF0;
+	cas_eph->svClock.af1	= eph_ctx->AF1;
+	cas_eph->svClock.af2	= eph_ctx->AF2;
+	cas_eph->svClock.tgd	= eph_ctx->tgd;
 	//
-	pCasic->health			= pSupl->health;
-	if (pCasic->health == 0)
+	cas_eph->health			  = eph_ctx->health;
+	if (cas_eph->health == 0)
 	{
-		pCasic->valid		= NAVIGATION_MESSAGE_AVAILABLE;
+		cas_eph->valid = NAVIGATION_MESSAGE_AVAILABLE;
 	}
 	else
 	{
-		pCasic->valid		= NAVIGATION_MESSAGE_UNHEALTHY;
+		cas_eph->valid = NAVIGATION_MESSAGE_UNHEALTHY;
 	}
-	pCasic->wordCheckSum	= msgCheckSum((unsigned int *)pCasic, sizeof(GPS_FIX_EPHEMERIS_STR));
+	cas_eph->wordCheckSum	= calc_checksum((unsigned int *)cas_eph, sizeof(GPS_FIX_EPHEMERIS_STR) / 4);
 }
 
-void supl2casicUtc(struct supl_utc_s *pSupl, FIX_UTC_STR *pCasic)
+void supl2cas_utc(struct supl_utc_s *utc_ctx, FIX_UTC_STR *cas_utc)
 {
-	pCasic->a0				= pSupl->a0;
-	pCasic->a1				= pSupl->a1;
-	pCasic->dn				= pSupl->dn;
-	pCasic->dtls			= pSupl->delta_tls;
-	pCasic->dtlsf			= pSupl->delta_tlsf;
-	pCasic->tot				= pSupl->tot;
-	pCasic->wnlsf			= pSupl->wnlsf;
-	pCasic->wnt				= pSupl->wnt;
-	pCasic->valid			= NAVIGATION_MESSAGE_AVAILABLE;
-	pCasic->wordCheckSum	= msgCheckSum((unsigned int *)pCasic, sizeof(FIX_UTC_STR));
+	cas_utc->a0				= utc_ctx->a0;
+	cas_utc->a1				= utc_ctx->a1;
+	cas_utc->dn				= utc_ctx->dn;
+	cas_utc->dtls			= utc_ctx->delta_tls;
+	cas_utc->dtlsf			= utc_ctx->delta_tlsf;
+	cas_utc->tot				= utc_ctx->tot;
+	cas_utc->wnlsf			= utc_ctx->wnlsf;
+	cas_utc->wnt				= utc_ctx->wnt;
+	cas_utc->valid			= NAVIGATION_MESSAGE_AVAILABLE;
+	cas_utc->wordCheckSum	= calc_checksum((unsigned int *)cas_utc, sizeof(FIX_UTC_STR) / 4);
 }
 
-void supl2casicIon(struct supl_ionospheric_s *pSupl, FIX_IONO_STR *pCasic)
+void supl2cas_iono(struct supl_ionospheric_s *iono_ctx, FIX_IONO_STR *cas_iono)
 {
-	pCasic->alpha0			= pSupl->a0;
-	pCasic->alpha1			= pSupl->a1;
-	pCasic->alpha2			= pSupl->a2;
-	pCasic->alpha3			= pSupl->a3;
+	cas_iono->alpha0			= iono_ctx->a0;
+	cas_iono->alpha1			= iono_ctx->a1;
+	cas_iono->alpha2			= iono_ctx->a2;
+	cas_iono->alpha3			= iono_ctx->a3;
 
-	pCasic->beta0			= pSupl->b0;
-	pCasic->beta1			= pSupl->b1;
-	pCasic->beta2			= pSupl->b2;
-	pCasic->beta3			= pSupl->b3;
-	pCasic->valid			= NAVIGATION_MESSAGE_AVAILABLE;
-	pCasic->wordCheckSum	= msgCheckSum((unsigned int *)pCasic, sizeof(FIX_IONO_STR));
+	cas_iono->beta0			= iono_ctx->b0;
+	cas_iono->beta1			= iono_ctx->b1;
+	cas_iono->beta2			= iono_ctx->b2;
+	cas_iono->beta3			= iono_ctx->b3;
+	cas_iono->valid			= NAVIGATION_MESSAGE_AVAILABLE;
+	cas_iono->wordCheckSum	= calc_checksum((unsigned int *)cas_iono, sizeof(FIX_IONO_STR) / 4);
 }
-
-
-/*
-void main(AID_REQ_STR *pAidReq, supl_assist_t *pSupldat, unsigned char *pAidData)
-{
-	GPS_FIX_EPHEMERIS_STR uTempGpsEph;
-	AID_INI_STR uTempAidIni;
-	FIX_UTC_STR uTempUtc;
-	FIX_IONO_STR uTempIon;
-
-	int ch;
-	unsigned int aidDataLen;
-	int reqMaskinfo;
-	int gpsEphEn = 0;
-	int bd2EphEn = 0;
-	int glnEphEn = 0;
-	int gpsUtcEn = 0;
-	int bd2UtcEn = 0;
-	int gpsIonEn = 0;
-	int bd2IonEn = 0;
-	int aidIniEn = 0;
-
-	reqMaskinfo = pAidReq->reqMask;
-
-	switch(pAidReq->gnssMask)
-	{
-	case 1: reqMaskinfo &= 0x0223; break;
-	case 2: reqMaskinfo &= 0x0445; break;
-	case 3: reqMaskinfo &= 0x0667; break;
-	case 4: reqMaskinfo &= 0x0009; break;
-	case 5: reqMaskinfo &= 0x022B; break;
-	case 7: reqMaskinfo &= 0x066F; break;
-	default: break;
-	}
-
-	aidIniEn = (reqMaskinfo & 0x001);
-	gpsEphEn = (reqMaskinfo & 0x002);
-	bd2EphEn = (reqMaskinfo & 0x004);
-	glnEphEn = (reqMaskinfo & 0x008);
-	gpsUtcEn = (reqMaskinfo & 0x020);
-	bd2UtcEn = (reqMaskinfo & 0x040);
-	gpsIonEn = (reqMaskinfo & 0x200);
-	bd2IonEn = (reqMaskinfo & 0x400);
-
-	//-----------------------------------------------------------------------------------------------------------------
-	// 开始构建发送数据包
-	aidDataLen = 0;
-	// 辅助定位的位置时间辅助
-	supl2casicIni(pSupldat, &uTempAidIni);
-	if (((uTempAidIni.flags & 0x3) != 0) && (aidIniEn == 1))
-	{
-		aidDataLen += msgPacketSend(ID_AID_INI, 		(int *)(&uTempAidIni), 	sizeof(uTempAidIni),			pAidData + aidDataLen);
-	}
-	// GPS星历
-	for (ch = 0; ch < MAX_EPHEMERIS; ch++)
-	{
-		supl2casicEph((unsigned short)pSupldat->time.gps_week, &pSupldat->eph[ch], &uTempGpsEph);
-		if ((uTempGpsEph.valid != NAVIGATION_MESSAGE_AVAILABLE) || (gpsEphEn == 0))	continue;
-		aidDataLen += msgPacketSend(ID_RXM_GPS_EPH, 	(int *)(&uTempGpsEph),	sizeof(GPS_FIX_EPHEMERIS_STR),	pAidData + aidDataLen);
-	}
-	// GPS的UTC参数
-	supl2casicUtc(&pSupldat->utc, &uTempUtc);
-	if ((uTempUtc.valid == NAVIGATION_MESSAGE_AVAILABLE) && (gpsUtcEn))
-	{
-		aidDataLen += msgPacketSend(ID_RXM_GPS_UTC, 	(int *)(&uTempUtc),		sizeof(FIX_UTC_STR),			pAidData + aidDataLen);
-	}
-	// GPS的电离层参数
-	supl2casicIon(&pSupldat->iono, &uTempIon);
-	if ((uTempIon.valid == NAVIGATION_MESSAGE_AVAILABLE) && (gpsIonEn))
-	{
-		aidDataLen += msgPacketSend(ID_RXM_GPS_ION, 	(int *)(&uTempIon),		sizeof(FIX_IONO_STR),			pAidData + aidDataLen);
-	}
-
-	
-	
-	
-}
-*/

@@ -151,9 +151,9 @@ typedef struct
 
 } AID_REQ_STR;
 
-unsigned int msgPacketSend(int id, int *pMsg, int n, unsigned char *pSendMsg);
-void supl2casicIni(supl_assist_t *pSupltp, AID_INI_STR *pCasicIni);
-void supl2casicEph(unsigned short wn, struct supl_ephemeris_s *pSupl, GPS_FIX_EPHEMERIS_STR *pCasic);
-void supl2casicUtc(struct supl_utc_s *pSupl, FIX_UTC_STR *pCasic);
-void supl2casicIon(struct supl_ionospheric_s *pSupl, FIX_IONO_STR *pCasic);
+unsigned int cas_make_msg(int id, int *msg, int n, unsigned char *buff);
+void supl2cas_ini(supl_assist_t *ctx, AID_INI_STR *cas_int);
+void supl2cas_eph(unsigned short wn, struct supl_ephemeris_s *eph_ctx, GPS_FIX_EPHEMERIS_STR *cas_eph);
+void supl2cas_utc(struct supl_utc_s *utc_ctx, FIX_UTC_STR *cas_utc);
+void supl2cas_iono(struct supl_ionospheric_s *iono_ctx, FIX_IONO_STR *cas_iono);
 #endif
