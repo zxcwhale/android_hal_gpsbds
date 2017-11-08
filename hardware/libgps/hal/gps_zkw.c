@@ -156,7 +156,8 @@ load_conf() {
       // printf("Key=%s, value=%s\n", key, value);
       if (key != NULL && value != NULL) {
         if (strcmp(key, "TTY_NAME") == 0) {
-          memcpy(tty_name, value, strlen(value));
+          memset(tty_name, 0, sizeof(tty_name));
+          strncpy(tty_name, value, sizeof(tty_name) - 1);
           D("Load tty name: %s\n", tty_name);
         } else if (strcmp(key, "TTY_BAUD") == 0) {
           int temp = 0;
@@ -165,10 +166,12 @@ load_conf() {
           if (temp) tty_baud = temp;
           D("Load tty baud: %d\n", tty_baud);
         } else if (strcmp(key, "SUPL_HOST") == 0) {
-          memcpy(supl_host, value, strlen(value));
+          memset(supl_host, 0, sizeof(supl_host));
+          strncpy(supl_host, value, sizeof(supl_host) - 1);
           D("Load supl host: %s\n", supl_host);
         } else if (strcmp(key, "SUPL_PORT") == 0) {
-          memcpy(supl_port, value, strlen(value));
+          memset(supl_port, 0, sizeof(supl_port));
+          strncpy(supl_port, value, sizeof(supl_port) - 1);
           D("Load supl port: %s\n", supl_port);
         }
       }
@@ -1764,7 +1767,7 @@ static struct hw_module_methods_t gps_module_methods = {
 struct hw_module_t HAL_MODULE_INFO_SYM = {
   .tag = HARDWARE_MODULE_TAG,
   .version_major = 3,
-  .version_minor = 13,
+  .version_minor = 21,
   .id            = GPS_HARDWARE_MODULE_ID,
   .name          = "HZZKW GNSS Module",
   .author        = "Jarod Lee",

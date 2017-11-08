@@ -91,7 +91,7 @@ struct supl_almanac_s {
   u_int8_t SV_health;
   u_int8_t fill[3];
 };
-		     
+
 struct supl_ephemeris_s {
   u_int8_t prn;
   u_int8_t fill1;
@@ -128,7 +128,7 @@ struct supl_ephemeris_s {
 };
 
 struct supl_ionospheric_s {
-    int8_t a0, a1, a2, a3, b0, b1, b2, b3;
+  int8_t a0, a1, a2, a3, b0, b1, b2, b3;
 };
 
 struct supl_utc_s {
@@ -172,14 +172,14 @@ typedef struct supl_rrlp_ctx_s {
   struct supl_acquis_s acq[MAX_EPHEMERIS];
 
 } supl_assist_t;
-  
+
 typedef struct supl_param_s {
   int set;
   int request;
 
   struct {
-		int mcc, mnc, tac, ci, phys_ci;
-  }lte;
+    int mcc, mnc, tac, ci, phys_ci;
+  } lte;
 
   struct {
     int mcc, mnc, lac, ci;
