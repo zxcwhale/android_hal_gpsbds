@@ -83,7 +83,7 @@ static char supl_port[16] = "7275";
 /*****************************************************************/
 /*****************************************************************/
 
-static void 
+static void
 remove_comments(char *s) {
   int i;
   for (i = 0; s[i] != 0; i++) {
@@ -94,14 +94,14 @@ remove_comments(char *s) {
   }
 }
 
-static int 
+static int
 is_space(char c) {
   return c == ' ' || c == '\r' || c == '\n' || c == '\t';
 }
 
-static void 
+static void
 remove_space(char *s) {
-  int i = 0; 
+  int i = 0;
   int j = 0;
   while( s[i] != '\0') {
     if (!is_space(s[i])) {
@@ -114,25 +114,25 @@ remove_space(char *s) {
   //for (i=0, j=0; s[j]=s[i]; j+=!is_space(s[i++]));
 }
 
-static int 
+static int
 int2baud(int n) {
   switch(n) {
-    case 4800:
-      return B4800;
-    case 9600:
-      return B9600;
-    case 19200:
-      return B19200;
-    case 57600:
-      return B57600;
-    case 115200:
-      return B115200;
-    default:
-      return 0;
+  case 4800:
+    return B4800;
+  case 9600:
+    return B9600;
+  case 19200:
+    return B19200;
+  case 57600:
+    return B57600;
+  case 115200:
+    return B115200;
+  default:
+    return 0;
   }
 }
 
-void 
+void
 load_conf() {
   FILE *fp;
   char line[256];
@@ -149,10 +149,10 @@ load_conf() {
     if (line[0] != 0) {
       //printf("Redline: %s. %d\n", line, is_space('\n'));
       char *splitter = "=";
-      char *key; 
+      char *key;
       char *value;
       key = strtok(line, splitter);
-      value = strtok(NULL, splitter);       
+      value = strtok(NULL, splitter);
       // printf("Key=%s, value=%s\n", key, value);
       if (key != NULL && value != NULL) {
         if (strcmp(key, "TTY_NAME") == 0) {
@@ -1035,7 +1035,7 @@ typedef struct {
 static GpsState  _gps_state[1];
 
 #ifdef SUPL_ENABLED
-static time_t 
+static time_t
 utc_time(int week, long tow) {
   time_t t;
 
@@ -1049,7 +1049,7 @@ utc_time(int week, long tow) {
   return t;
 }
 
-static int 
+static int
 supl_consume_1(supl_assist_t *ctx) {
   if (ctx->set & SUPL_RRLP_ASSIST_REFLOC) {
     D("Reference Location:\n");
@@ -1168,7 +1168,7 @@ supl_consume_1(supl_assist_t *ctx) {
   return 1;
 }
 
-static int 
+static int
 supl2cas_aid(supl_assist_t *ctx, unsigned char *buff) {
   D("SUPL 2 Casic Aid.");
   GPS_FIX_EPHEMERIS_STR uTempGpsEph;
@@ -1217,71 +1217,9 @@ supl2cas_aid(supl_assist_t *ctx, unsigned char *buff) {
   return length;
 }
 
-static void 
-supl_thread(void *arg) {
-  GpsState *state = (GpsState *)arg;
-  unsigned char buff[4096];
-  int len = 0;
-  int err = 0;
-  int fd = state->fd;
-  supl_assist_t assist;
-
-#if SUPL_TEST
-  if (fd != -1) {
-    char reboot_cmd[] = "$PCAS10,2*1E\r\n";
-    write(fd, reboot_cmd, strlen(reboot_cmd));
-  }
-#endif
-
-  supl_ctx_new(&supl_ctx);
-  agpsRilCallbacks->request_refloc(AGPS_RIL_REQUEST_REFLOC_CELLID);
-  agpsRilCallbacks->request_setid(AGPS_RIL_REQUEST_SETID_MSISDN);
-  usleep(1000 * 1000);
-  
-  if (supl_ctx.p.set == 0) {
-    D("No cell info present.");
-#if SUPL_TEST
-    supl_set_lte_cell(&supl_ctx, 460, 0, 22548, 193790209, 0);
-#else
-    return;
-#endif
-  }
-
-  if (supl_ctx.p.msisdn[0] == 0) {
-    D("No msisdn present.");
-    supl_set_msisdn(&supl_ctx, "+8613588889999");
-  }
-
-  err = supl_get_assist(&supl_ctx, supl_host, supl_port, &assist);
-  if (err < 0) {
-    D("SUPL protocol error %d\n", err);
-    return;
-  }
-#if SUPL_TEST
-  supl_consume_1(&assist);
-#endif
-
-  len = supl2cas_aid(&assist, buff);
-  if (len > 0 && fd != -1) {
-    write(fd, buff, len);
-    D("Send CasicAidMessage: %d bytes.", len); 
-  }
-  last_supl_time = time(NULL);
-  D("Update last supl time: %lu", last_supl_time);
-#if SUPL_TEST
-  FILE *f = fopen("/data/agpshal.bin", "wb");
-  if (f != NULL) {
-    fwrite(buff, 1, len, f);
-    fclose(f);
-  }
-#endif
-
-  supl_ctx_free(&supl_ctx);
-}
-
 static int
 is_supl_needed() {
-  time_t now = time(NULL);  
+  time_t now = time(NULL);
   if (now - last_supl_time > 3600) {
     D("Supl needed: %lu vs %lu", now, last_supl_time);
     return 1;
@@ -1293,8 +1231,80 @@ is_supl_needed() {
 #endif
 }
 
+static unsigned char supl_thread_start = 0;
+
+static void
+supl_thread(void *arg) {
+  supl_thread_start = 1;
+
+  GpsState *state = (GpsState *)arg;
+  unsigned char buff[4096];
+  int len = 0;
+  int err = 0;
+  int fd = state->fd;
+  supl_assist_t assist;
+
+  do {
+#if SUPL_TEST
+    if (fd != -1) {
+      char reboot_cmd[] = "$PCAS10,2*1E\r\n";
+      write(fd, reboot_cmd, strlen(reboot_cmd));
+    }
+#endif
+
+    supl_ctx_new(&supl_ctx);
+    agpsRilCallbacks->request_refloc(AGPS_RIL_REQUEST_REFLOC_CELLID);
+    agpsRilCallbacks->request_setid(AGPS_RIL_REQUEST_SETID_MSISDN);
+    usleep(1000 * 1000);
+
+    if (supl_ctx.p.set == 0) {
+      D("No cell info present.");
+#if SUPL_TEST
+      supl_set_lte_cell(&supl_ctx, 460, 0, 22548, 193790209, 0);
+#else
+      continue;
+#endif
+    }
+
+    if (supl_ctx.p.msisdn[0] == 0) {
+      D("No msisdn present.");
+      supl_set_msisdn(&supl_ctx, "+8613588889999");
+    }
+
+    err = supl_get_assist(&supl_ctx, supl_host, supl_port, &assist);
+    if (err < 0) {
+      D("SUPL protocol error %d\n", err);
+      continue;
+    }
+#if SUPL_TEST
+    supl_consume_1(&assist);
+#endif
+
+    len = supl2cas_aid(&assist, buff);
+    if (len > 0 && fd != -1) {
+      write(fd, buff, len);
+      D("Send CasicAidMessage: %d bytes.", len);
+    }
+    last_supl_time = time(NULL);
+    D("Update last supl time: %lu", last_supl_time);
+#if SUPL_TEST
+    FILE *f = fopen("/data/agpshal.bin", "wb");
+    if (f != NULL) {
+      fwrite(buff, 1, len, f);
+      fclose(f);
+    }
+#endif
+
+    supl_ctx_free(&supl_ctx);
+    break;
+  } while(usleep(1000 * 1000) == 0);
+
+  supl_thread_start = 0;
+}
+
+
 /*
-static void 
+static void
 supl_start() {
   GpsState *state = _gps_state;
   int thread = state->callbacks.create_thread_cb("supl_thread", supl_thread, state);
@@ -1354,7 +1364,7 @@ gps_state_start( GpsState*  s )
 #endif
 
 #ifdef SUPL_ENABLED
-  if (is_supl_needed()) {
+  if (is_supl_needed() && supl_thread_start == 0) {
     int thread = s->callbacks.create_thread_cb("supl_thread", supl_thread, s);
     if (!thread) {
       D("Could not create supl thread: %s", strerror(errno));
