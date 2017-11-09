@@ -1,6 +1,6 @@
 # Android HAL driver for GPS and BDS
 This is an GNSS HAL driver project. Support for both GPS and BDS satellites system.
-Also add SUPL2.0 for AGPS features.
+And use SUPL2.0 for AGPS.
 
 ## Basics
 1. This project is about to make a gps.xxxx.so lib, which loaded by android system at the booting time.
