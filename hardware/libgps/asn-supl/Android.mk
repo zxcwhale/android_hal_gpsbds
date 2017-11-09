@@ -1,4 +1,5 @@
 LOCAL_PATH := $(call my-dir)
+ifeq ($(SUPL_ENABLED),1)
 include $(CLEAR_VARS)
 LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)
 LOCAL_SHARED_LIBRARIES := liblog libcutils libhardware libc libutils
@@ -268,3 +269,4 @@ LOCAL_SRC_FILES+=XPositionData.c
 LOCAL_MODULE := libasnsupl
 LOCAL_MODULE_TAGS := debug eng
 include $(BUILD_SHARED_LIBRARY)
+endif

@@ -206,7 +206,7 @@ int EXPORT supl_decode_rrlp(supl_ulp_t *ulp_pdu, PDU_t **ret_rrlp) {
   switch (rval.code) {
   case RC_OK:
 #ifdef SUPL_DEBUG
-    if (rval.consumed != rrlp_pdu->size) {
+    if ((int)rval.consumed != (int)rrlp_pdu->size) {
       if (debug.debug) fprintf(debug.log, "Warning: %d bytes left over in RRLP decoding\n", rval.consumed);
     }
 #endif
@@ -330,7 +330,7 @@ static MCC_t *ulp_create_mcc(int mcc_value) {
   MCC_MNC_Digit_t *d;
   MCC_t *mcc;
   char tmp[8];
-  int i = 0;
+  uint32_t i = 0;
 
   mcc = calloc(1, sizeof *mcc);
   sprintf(tmp, "%d", mcc_value);
@@ -350,7 +350,7 @@ static void ulp_fill_mnc(MNC_t *mnc, int mnc_value) {
 
   MCC_MNC_Digit_t *d;
   char tmp[8];
-  int i = 0;
+  uint32_t i = 0;
 
   sprintf(tmp, "%02d", mnc_value);
   for (i = 0; i < strlen(tmp); i++) {
@@ -1002,9 +1002,9 @@ int EXPORT supl_get_assist(supl_ctx_t *ctx, char *server, char *port, supl_assis
 
 void EXPORT supl_set_msisdn(supl_ctx_t *ctx, const char *msisdn) {
   memset(ctx->p.msisdn, 0xff, 8);
-  unsigned long long num;
+  uint64_t num;
   if (sscanf(msisdn, "%llu", &num) != 1) {
-    num = 31415926536;
+    num = 31415926536LL;
   }
 
   int idx = 8;

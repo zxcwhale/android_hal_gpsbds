@@ -64,5 +64,6 @@ As we do all the things in android's hal(parse nmea and conceal satellites's in_
 ## SUPL2
 
 1. SUPL2 is an optional feature, which can improves the gnss devices's startup performance.
-1. All my SUPL code are base on tajuma's project https://github.com/tajuma/supl
-2. To support LTE(4G) network, I update asn-rrlp and asn-supl to SUPL2.0.
+2. All my SUPL codes are based on [tajuma's project](https://github.com/tajuma/supl).
+3. To support LTE(4G) network, I update asn-rrlp and asn-supl to SUPL2.0.
+4. To enable/disable SUPL2, edit hardware/libgps/Android.mk and set SUPL\_ENABLED := 1/0.

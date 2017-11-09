@@ -1714,9 +1714,11 @@ zkw_gps_get_extension(const char* name)
     return &zkwAGpsInterface;
     }
     else*/
+#if SUPL_ENABLED
   if ( strcmp(name, AGPS_RIL_INTERFACE) == 0 ) {
     return &zkwAGpsRilInterface;
   }
+#endif
   return NULL;
 }
 
@@ -1767,7 +1769,7 @@ static struct hw_module_methods_t gps_module_methods = {
 struct hw_module_t HAL_MODULE_INFO_SYM = {
   .tag = HARDWARE_MODULE_TAG,
   .version_major = 3,
-  .version_minor = 21,
+  .version_minor = 23,
   .id            = GPS_HARDWARE_MODULE_ID,
   .name          = "HZZKW GNSS Module",
   .author        = "Jarod Lee",
