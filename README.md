@@ -60,7 +60,6 @@ As we do all the things in android's hal(parse nmea and conceal satellites's in_
 * 201, 202 and 203 with black foreground and white background are BDS satellites.
 * The maximum display satellites number of GPSTest are 12, but there are 21 satellites in view, so the rest are not displayed.
 
-
 ## SUPL2
 
 1. SUPL2 is an optional feature, which can improves the gnss devices's startup performance.
