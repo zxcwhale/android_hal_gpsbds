@@ -48,7 +48,7 @@
 
 #define GPS_DEBUG  1
 #define NMEA_DEBUG 0
-#define SUPL_TEST 0
+#define SUPL_TEST 1
 #define GPS_SV_INCLUDE 1
 
 typedef enum {
@@ -1235,16 +1235,33 @@ static unsigned char supl_thread_start = 0;
 
 static void
 supl_thread(void *arg) {
+  D("Start supl thread\n");
   supl_thread_start = 1;
 
   GpsState *state = (GpsState *)arg;
-  unsigned char buff[4096];
+  //unsigned char buff[4096];
+  unsigned char *buff;
   int len = 0;
   int err = 0;
   int fd = state->fd;
+  int loop_counter = 0;
   supl_assist_t assist;
 
+  buff = (unsigned char *)calloc(1, 8192);
+  if (buff == NULL) {
+    D("Can not calloc supl buff");
+    return;
+  }
+
   do {
+    D("Enter supl download loop: %d.", loop_counter);
+    loop_counter += 1;
+    // Thread will stop running after 120 failed tries.
+    /*
+    if (loop_counter > 120) {
+      break;
+    }
+    */
 #if SUPL_TEST
     if (fd != -1) {
       char reboot_cmd[] = "$PCAS10,2*1E\r\n";
@@ -1252,10 +1269,12 @@ supl_thread(void *arg) {
     }
 #endif
 
+    D("Reset supl_ctx");
     supl_ctx_new(&supl_ctx);
+    D("Request refloc and setid");
     agpsRilCallbacks->request_refloc(AGPS_RIL_REQUEST_REFLOC_CELLID);
     agpsRilCallbacks->request_setid(AGPS_RIL_REQUEST_SETID_MSISDN);
-    usleep(1000 * 1000);
+    // usleep(1000 * 1000);
 
     if (supl_ctx.p.set == 0) {
       D("No cell info present.");
@@ -1299,7 +1318,9 @@ supl_thread(void *arg) {
     break;
   } while(usleep(1000 * 1000) == 0);
 
+  free(buff);
   supl_thread_start = 0;
+  D("Leave supl thread");
 }
 
 
@@ -1779,7 +1800,7 @@ static struct hw_module_methods_t gps_module_methods = {
 struct hw_module_t HAL_MODULE_INFO_SYM = {
   .tag = HARDWARE_MODULE_TAG,
   .version_major = 3,
-  .version_minor = 23,
+  .version_minor = 24,
   .id            = GPS_HARDWARE_MODULE_ID,
   .name          = "HZZKW GNSS Module",
   .author        = "Jarod Lee",
