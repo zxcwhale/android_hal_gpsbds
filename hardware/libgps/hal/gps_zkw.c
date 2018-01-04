@@ -48,7 +48,7 @@
 
 #define GPS_DEBUG  1
 #define NMEA_DEBUG 0
-#define SUPL_TEST 1
+#define SUPL_TEST 0
 #define GPS_SV_INCLUDE 1
 
 typedef enum {
@@ -1231,12 +1231,11 @@ is_supl_needed() {
 #endif
 }
 
-static unsigned char supl_thread_start = 0;
+static unsigned char zkw_supl_thread_start = 0;
 
 static void
-supl_thread(void *arg) {
+zkw_supl_thread(void *arg) {
   D("Start supl thread\n");
-  supl_thread_start = 1;
 
   GpsState *state = (GpsState *)arg;
   //unsigned char buff[4096];
@@ -1244,7 +1243,7 @@ supl_thread(void *arg) {
   int len = 0;
   int err = 0;
   int fd = state->fd;
-  int loop_counter = 0;
+  unsigned int loop_counter = 0;
   supl_assist_t assist;
 
   buff = (unsigned char *)calloc(1, 8192);
@@ -1253,15 +1252,16 @@ supl_thread(void *arg) {
     return;
   }
 
+  zkw_supl_thread_start = 1;
+
   do {
     D("Enter supl download loop: %d.", loop_counter);
     loop_counter += 1;
-    // Thread will stop running after 120 failed tries.
-    /*
+    // Thread will stop running after n times failed tries.
     if (loop_counter > 120) {
       break;
     }
-    */
+
 #if SUPL_TEST
     if (fd != -1) {
       char reboot_cmd[] = "$PCAS10,2*1E\r\n";
@@ -1319,8 +1319,8 @@ supl_thread(void *arg) {
   } while(usleep(1000 * 1000) == 0);
 
   free(buff);
-  supl_thread_start = 0;
-  D("Leave supl thread");
+  zkw_supl_thread_start = 0;
+  D("Endof supl thread");
 }
 
 
@@ -1328,7 +1328,7 @@ supl_thread(void *arg) {
 static void
 supl_start() {
   GpsState *state = _gps_state;
-  int thread = state->callbacks.create_thread_cb("supl_thread", supl_thread, state);
+  int thread = state->callbacks.create_thread_cb("ZkwSuplThread", zkw_supl_thread, state);
   if (!thread) {
     D("Could not create supl thread: %s", strerror(errno));
     return;
@@ -1351,6 +1351,9 @@ gps_state_done( GpsState*  s )
   void*  dummy;
   write( s->control[0], &cmd, 1 );
   pthread_join(s->thread, &dummy);
+
+  // tell the supl thread to quit
+  // zkw_supl_thread_start = 0;
 
   // close the control socket pair
   close( s->control[0] );
@@ -1385,12 +1388,13 @@ gps_state_start( GpsState*  s )
 #endif
 
 #ifdef SUPL_ENABLED
-  if (is_supl_needed() && supl_thread_start == 0) {
-    int thread = s->callbacks.create_thread_cb("supl_thread", supl_thread, s);
-    if (!thread) {
+  if (is_supl_needed() && zkw_supl_thread_start == 0) {
+    int tid = s->callbacks.create_thread_cb("zkw_supl_thread", zkw_supl_thread, s);
+    if (!tid) {
       D("Could not create supl thread: %s", strerror(errno));
       return;
     }
+    D("ZKW SUPL thread created. tid = 0x%X", tid);
   }
 #endif
 }
@@ -1800,7 +1804,7 @@ static struct hw_module_methods_t gps_module_methods = {
 struct hw_module_t HAL_MODULE_INFO_SYM = {
   .tag = HARDWARE_MODULE_TAG,
   .version_major = 3,
-  .version_minor = 24,
+  .version_minor = 25,
   .id            = GPS_HARDWARE_MODULE_ID,
   .name          = "HZZKW GNSS Module",
   .author        = "Jarod Lee",
