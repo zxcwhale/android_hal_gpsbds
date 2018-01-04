@@ -1789,10 +1789,15 @@ static int open_gps(const struct hw_module_t* module, char const* name,
                     struct hw_device_t** device)
 {
 
+  D("Zkw hal driver, version=%d.%d", module->version_major, module->version_minor);
+
   struct gps_device_t *dev = malloc(sizeof(struct gps_device_t));
+  if (dev == NULL) {
+    D("Can not malloc gps_device_t");
+    return 1;
+  }
   memset(dev, 0, sizeof(*dev));
 
-  D("Zkw hal driver, version=%d.%d", module->version_major, module->version_minor);
   dev->common.tag = HARDWARE_DEVICE_TAG;
   dev->common.version = 0;
   dev->common.module = (struct hw_module_t*)module;
@@ -1812,7 +1817,7 @@ static struct hw_module_methods_t gps_module_methods = {
 struct hw_module_t HAL_MODULE_INFO_SYM = {
   .tag = HARDWARE_MODULE_TAG,
   .version_major = 3,
-  .version_minor = 26,
+  .version_minor = 27,
   .id            = GPS_HARDWARE_MODULE_ID,
   .name          = "HZZKW GNSS Module",
   .author        = "Jarod Lee",
