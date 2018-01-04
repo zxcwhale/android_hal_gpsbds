@@ -1258,9 +1258,11 @@ zkw_supl_thread(void *arg) {
     D("Enter supl download loop: %d.", loop_counter);
     loop_counter += 1;
     // Thread will stop running after n times failed tries.
+    /*
     if (loop_counter > 120) {
       break;
     }
+    */
 
 #if SUPL_TEST
     if (fd != -1) {
@@ -1276,6 +1278,7 @@ zkw_supl_thread(void *arg) {
     agpsRilCallbacks->request_setid(AGPS_RIL_REQUEST_SETID_MSISDN);
     // usleep(1000 * 1000);
 
+    D("Check cell info");
     if (supl_ctx.p.set == 0) {
       D("No cell info present.");
 #if SUPL_TEST
@@ -1285,11 +1288,13 @@ zkw_supl_thread(void *arg) {
 #endif
     }
 
+    D("Check msisdn");
     if (supl_ctx.p.msisdn[0] == 0) {
       D("No msisdn present.");
       supl_set_msisdn(&supl_ctx, "+8613588889999");
     }
 
+    D("Download assist data");
     err = supl_get_assist(&supl_ctx, supl_host, supl_port, &assist);
     if (err < 0) {
       D("SUPL protocol error %d\n", err);
@@ -1299,6 +1304,7 @@ zkw_supl_thread(void *arg) {
     supl_consume_1(&assist);
 #endif
 
+    D("Pack aid data");
     len = supl2cas_aid(&assist, buff);
     if (len > 0 && fd != -1) {
       write(fd, buff, len);
@@ -1314,10 +1320,12 @@ zkw_supl_thread(void *arg) {
     }
 #endif
 
+    D("Free supl_ctx");
     supl_ctx_free(&supl_ctx);
     break;
   } while(usleep(1000 * 1000) == 0);
 
+  D("Endof download loop");
   free(buff);
   zkw_supl_thread_start = 0;
   D("Endof supl thread");
@@ -1804,7 +1812,7 @@ static struct hw_module_methods_t gps_module_methods = {
 struct hw_module_t HAL_MODULE_INFO_SYM = {
   .tag = HARDWARE_MODULE_TAG,
   .version_major = 3,
-  .version_minor = 25,
+  .version_minor = 26,
   .id            = GPS_HARDWARE_MODULE_ID,
   .name          = "HZZKW GNSS Module",
   .author        = "Jarod Lee",
