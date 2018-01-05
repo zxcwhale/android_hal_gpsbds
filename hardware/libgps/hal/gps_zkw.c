@@ -69,11 +69,34 @@ typedef enum {
 #  define  D(...)   ((void)0)
 #endif
 
+/*****************************************************************/
+/*****************************************************************/
+/*****                                                       *****/
+/*****       C O N N E C T I O N   S T A T E                 *****/
+/*****                                                       *****/
+/*****************************************************************/
+/*****************************************************************/
 
-static char tty_name[16] = "/dev/ttyGNSS";
-static int tty_baud = B9600;
-static char supl_host[64] = "supl.qxwz.com";
-static char supl_port[16] = "7275";
+/* commands sent to the gps thread */
+enum {
+  CMD_QUIT  = 0,
+  CMD_START = 1,
+  CMD_STOP  = 2
+};
+
+
+/* this is the state of our connection to the qemu_gpsd daemon */
+typedef struct {
+  int                     init;
+  int                     fd;
+  GpsCallbacks            callbacks;
+  pthread_t               thread;
+  int                     control[2];
+  char                    device[32];
+  int                     speed;
+} GpsState;
+
+static GpsState  _gps_state[1];
 
 /*****************************************************************/
 /*****************************************************************/
@@ -82,6 +105,11 @@ static char supl_port[16] = "7275";
 /*****                                                       *****/
 /*****************************************************************/
 /*****************************************************************/
+
+static char tty_name[16] = "/dev/ttyGNSS";
+static int tty_baud = B9600;
+static char supl_host[64] = "supl.qxwz.com";
+static char supl_port[16] = "7275";
 
 static void
 remove_comments(char *s) {
@@ -304,7 +332,14 @@ str2float( const char*  p, const char*  end )
 }
 
 #ifdef SUPL_ENABLED
-static time_t last_supl_time = 0;
+/*****************************************************************/
+/*****************************************************************/
+/*****                                                       *****/
+/*****       A G P S R I L   C E L L I D                     *****/
+/*****                                                       *****/
+/*****************************************************************/
+/*****************************************************************/
+
 static supl_ctx_t supl_ctx;
 static AGpsRilCallbacks *agpsRilCallbacks;
 void
@@ -366,6 +401,314 @@ static const AGpsRilInterface zkwAGpsRilInterface = {
 
 #endif
 
+#ifdef SUPL_ENABLED
+/*****************************************************************/
+/*****************************************************************/
+/*****                                                       *****/
+/*****       S U P L   D O W N L O A D E R                   *****/
+/*****                                                       *****/
+/*****************************************************************/
+/*****************************************************************/
+
+static time_t last_supl_time = 0;
+static time_t
+utc_time(int week, long tow) {
+  time_t t;
+
+  /* Jan 5/6 midnight 1980 - beginning of GPS time as Unix time */
+  t = 315964801;
+
+  /* soon week will wrap again, uh oh... */
+  /* TS 44.031: GPSTOW, range 0-604799.92, resolution 0.08 sec, 23-bit presentation */
+  t += (1024 + week) * 604800 + tow*0.08;
+
+  return t;
+}
+
+static int
+supl_consume_1(supl_assist_t *ctx) {
+  if (ctx->set & SUPL_RRLP_ASSIST_REFLOC) {
+    D("Reference Location:\n");
+    D("  Lat: %f\n", ctx->pos.lat);
+    D("  Lon: %f\n", ctx->pos.lon);
+    D("  Uncertainty: %d (%.1f m)\n",
+      ctx->pos.uncertainty, 10.0*(pow(1.1, ctx->pos.uncertainty)-1));
+  }
+
+  if (ctx->set & SUPL_RRLP_ASSIST_REFTIME) {
+    time_t t;
+
+    t = utc_time(ctx->time.gps_week, ctx->time.gps_tow);
+
+    D("Reference Time:\n");
+    D("  GPS Week: %ld\n", ctx->time.gps_week);
+    D("  GPS TOW:  %ld %lf\n", ctx->time.gps_tow, ctx->time.gps_tow*0.08);
+    D("  ~ UTC:    %s", ctime(&t));
+  }
+
+  if (ctx->set & SUPL_RRLP_ASSIST_IONO) {
+    D("Ionospheric Model:\n");
+    D("  # a0 a1 a2 b0 b1 b2 b3\n");
+    D("  %g, %g, %g",
+      ctx->iono.a0 * pow(2.0, -30),
+      ctx->iono.a1 * pow(2.0, -27),
+      ctx->iono.a2 * pow(2.0, -24));
+    D(" %g, %g, %g, %g\n",
+      ctx->iono.b0 * pow(2.0, 11),
+      ctx->iono.b1 * pow(2.0, 14),
+      ctx->iono.b2 * pow(2.0, 16),
+      ctx->iono.b3 * pow(2.0, 16));
+  }
+
+  if (ctx->set & SUPL_RRLP_ASSIST_UTC) {
+    D("UTC Model:\n");
+    D("  # a0, a1 delta_tls tot dn\n");
+    D("  %g %g %d %d %d %d %d %d\n",
+      ctx->utc.a0 * pow(2.0, -30),
+      ctx->utc.a1 * pow(2.0, -50),
+      ctx->utc.delta_tls,
+      ctx->utc.tot, ctx->utc.wnt, ctx->utc.wnlsf,
+      ctx->utc.dn, ctx->utc.delta_tlsf);
+  }
+
+  if (ctx->cnt_eph) {
+    int i;
+
+    D("Ephemeris:");
+    D(" %d satellites\n", ctx->cnt_eph);
+    D("  # prn delta_n M0 A_sqrt OMEGA_0 i0 w OMEGA_dot i_dot Cuc Cus Crc Crs Cic Cis");
+    D(" toe IODC toc AF0 AF1 AF2 bits ura health tgd OADA\n");
+
+    for (i = 0; i < ctx->cnt_eph; i++) {
+      struct supl_ephemeris_s *e = &ctx->eph[i];
+
+      D("  %d %g %g %g %g %g %g %g %g",
+        e->prn,
+        e->delta_n * pow(2.0, -43),
+        e->M0 * pow(2.0, -31),
+        e->A_sqrt * pow(2.0, -19),
+        e->OMEGA_0 * pow(2.0, -31),
+        e->i0 * pow(2.0, -31),
+        e->w * pow(2.0, -31),
+        e->OMEGA_dot * pow(2.0, -43),
+        e->i_dot * pow(2.0, -43));
+      D(" %g %g %g %g %g %g",
+        e->Cuc * pow(2.0, -29),
+        e->Cus * pow(2.0, -29),
+        e->Crc * pow(2.0, -5),
+        e->Crs * pow(2.0, -5),
+        e->Cic * pow(2.0, -29),
+        e->Cis * pow(2.0, -29));
+      D(" %g %u %g %g %g %g",
+        e->toe * pow(2.0, 4),
+        e->IODC,
+        e->toc * pow(2.0, 4),
+        e->AF0 * pow(2.0, -31),
+        e->AF1 * pow(2.0, -43),
+        e->AF2 * pow(2.0, -55));
+      D(" %d %d %d %d %d\n",
+        e->bits,
+        e->ura,
+        e->health,
+        e->tgd,
+        e->AODA * 900);
+    }
+  }
+
+  if (ctx->cnt_alm) {
+    int i;
+
+    D("Almanac:");
+    D(" %d satellites\n", ctx->cnt_alm);
+    D("  # prn e toa Ksii OMEGA_dot A_sqrt OMEGA_0 w M0 AF0 AF1\n");
+
+    for (i = 0; i < ctx->cnt_alm; i++) {
+      struct supl_almanac_s *a = &ctx->alm[i];
+
+      D("  %d %g %g %g %g ",
+        a->prn,
+        a->e * pow(2.0, -21),
+        a->toa * pow(2.0, 12),
+        a->Ksii * pow(2.0, -19),
+        a->OMEGA_dot * pow(2.0, -38));
+      D("%g %g %g %g %g %g\n",
+        a->A_sqrt * pow(2.0, -11),
+        a->OMEGA_0 * pow(2.0, -23),
+        a->w * pow(2.0, -23),
+        a->M0 * pow(2.0, -23),
+        a->AF0 * pow(2.0, -20),
+        a->AF1 * pow(2.0, -38));
+    }
+  }
+
+  return 1;
+}
+
+static int
+supl2cas_aid(supl_assist_t *ctx, unsigned char *buff) {
+  D("SUPL 2 Casic Aid.");
+  GPS_FIX_EPHEMERIS_STR uTempGpsEph;
+  AID_INI_STR uTempAidIni;
+  FIX_UTC_STR uTempUtc;
+  FIX_IONO_STR uTempIon;
+
+  int cnt;
+  int length = 0;
+
+  memset(&uTempAidIni, 0, sizeof(AID_INI_STR));
+  supl2cas_ini(ctx, &uTempAidIni);
+  if (uTempAidIni.flags) {
+    length += cas_make_msg(ID_AID_INI,     (int *)(&uTempAidIni),   sizeof(uTempAidIni),      buff + length);
+    D("Pack Casic Ini message.");
+  }
+  for (cnt = 0; cnt < ctx->cnt_eph; cnt++) {
+    if (ctx->set & SUPL_RRLP_ASSIST_REFTIME) {
+      memset(&uTempGpsEph, 0, sizeof(GPS_FIX_EPHEMERIS_STR));
+      supl2cas_eph((unsigned short)ctx->time.gps_week, &ctx->eph[cnt], &uTempGpsEph);
+      if (uTempGpsEph.valid != NAVIGATION_MESSAGE_AVAILABLE)
+        continue;
+      length += cas_make_msg(ID_RXM_GPS_EPH,   (int *)(&uTempGpsEph),  sizeof(GPS_FIX_EPHEMERIS_STR),  buff + length);
+      D("Pack Casic Eph message %d.", cnt);
+    }
+  }
+
+  if (ctx->set & SUPL_RRLP_ASSIST_UTC) {
+    memset(&uTempUtc, 0, sizeof(FIX_UTC_STR));
+    supl2cas_utc(&ctx->utc, &uTempUtc);
+    if (uTempUtc.valid == NAVIGATION_MESSAGE_AVAILABLE) {
+      length += cas_make_msg(ID_RXM_GPS_UTC,   (int *)(&uTempUtc),    sizeof(FIX_UTC_STR),      buff + length);
+      D("Pack Casic GPS_UTC message.");
+    }
+  }
+
+  if (ctx->set & SUPL_RRLP_ASSIST_IONO) {
+    memset(&uTempIon, 0, sizeof(FIX_IONO_STR));
+    supl2cas_iono(&ctx->iono, &uTempIon);
+    if (uTempIon.valid == NAVIGATION_MESSAGE_AVAILABLE) {
+      length += cas_make_msg(ID_RXM_GPS_ION,   (int *)(&uTempIon),    sizeof(FIX_IONO_STR),      buff + length);
+      D("Pack Casic GPS_ION message.");
+    }
+  }
+
+  return length;
+}
+
+static int
+is_supl_needed() {
+  time_t now = time(NULL);
+  if (now - last_supl_time > 3600) {
+    D("Supl needed: %lu vs %lu", now, last_supl_time);
+    return 1;
+  }
+  return 0;
+}
+
+static unsigned char is_supl_thread_running = 0;
+
+static void
+zkw_supl_thread(void *arg) {
+  D("Start supl thread, arg = 0x%p\n", arg);
+  is_supl_thread_running = 1;
+
+  unsigned char *buff;
+  int len = 0;
+  int err = 0;
+  supl_assist_t assist;
+  GpsState *s = (GpsState *)arg;
+  int fd = s->fd;
+  
+  D("Check tty fd");
+  if (fd < 0) {
+    D("Invalid tty fd: %d", fd);
+    goto SuplEnd;
+  }
+
+/*
+#if SUPL_TEST
+  if (fd != -1) {
+    char reboot_cmd[] = "$PCAS10,2*1E\r\n";
+    write(fd, reboot_cmd, strlen(reboot_cmd));
+  }
+#endif
+*/
+
+  D("Reset supl_ctx");
+  supl_ctx_new(&supl_ctx);
+  D("Request refloc and setid");
+  agpsRilCallbacks->request_refloc(AGPS_RIL_REQUEST_REFLOC_CELLID);
+  agpsRilCallbacks->request_setid(AGPS_RIL_REQUEST_SETID_MSISDN);
+  // usleep(1000 * 1000);
+
+  D("Check cell info");
+  if (supl_ctx.p.set == 0) {
+    D("No cell info present.");
+#if SUPL_TEST
+    supl_set_lte_cell(&supl_ctx, 460, 0, 22548, 193790209, 0);
+#else
+    goto SuplEnd;
+#endif
+  }
+
+  D("Check msisdn");
+  if (supl_ctx.p.msisdn[0] == 0) {
+    D("No msisdn present.");
+    supl_set_msisdn(&supl_ctx, "+8613588889999");
+  }
+
+  D("Download assist data");
+  err = supl_get_assist(&supl_ctx, supl_host, supl_port, &assist);
+  if (err < 0) {
+    D("SUPL protocol error %d\n", err);
+    goto SuplEnd;
+  }
+#if SUPL_TEST
+  supl_consume_1(&assist);
+#endif
+
+  D("Alloc aid buff");
+  buff = (unsigned char *)calloc(1, 8192);
+  if (buff == NULL) {
+    D("Alloc aid buff failed.");
+    goto SuplEnd;
+  }
+  D("Pack aid data");
+  len = supl2cas_aid(&assist, buff);
+  if (len > 0) {
+    write(fd, buff, len);
+    D("Send CasicAidMessage: %d bytes.", len);
+  }
+  last_supl_time = time(NULL);
+  D("Update last supl time: %lu", last_supl_time);
+#if SUPL_TEST
+  FILE *f = fopen("/data/agpshal.bin", "wb");
+  if (f != NULL) {
+    fwrite(buff, 1, len, f);
+    fclose(f);
+  }
+#endif
+  free(buff);
+
+  D("Free supl_ctx");
+  supl_ctx_free(&supl_ctx);
+
+SuplEnd:
+  is_supl_thread_running = 0;
+  D("Endof supl thread");
+}
+
+
+/*
+static void
+supl_start() {
+  GpsState *state = _gps_state;
+  int thread = state->callbacks.create_thread_cb("ZkwSuplThread", zkw_supl_thread, state);
+  if (!thread) {
+    D("Could not create supl thread: %s", strerror(errno));
+    return;
+  }
+}
+*/
+#endif
 /*****************************************************************/
 /*****************************************************************/
 /*****                                                       *****/
@@ -702,11 +1045,13 @@ nmea_reader_parse( NmeaReader*  r )
   Token          tok;
   int         sv_type;
 
-#if NMEA_DEBUG
+#if GPS_DEBUG
   D("Received: '%.*s'", r->pos, r->in);
 #endif
   if (r->pos < 9) {
+#if NMEA_DEBUG
     D("Too short. discarded.");
+#endif
     return;
   }
 
@@ -768,6 +1113,20 @@ nmea_reader_parse( NmeaReader*  r )
                                  tok_longitude,
                                  tok_longitudeHemi.p[0]);
       nmea_reader_update_altitude(r, tok_altitude, tok_altitudeUnits);
+    }
+    else {
+#ifdef SUPL_ENABLED
+      D("Unfixed, try to use supl");
+      if (is_supl_thread_running == 0 && is_supl_needed()) {
+        GpsState *s = _gps_state;
+        int tid = s->callbacks.create_thread_cb("ZKWSuplThread", zkw_supl_thread, s);
+        if (!tid) {
+          D("Could not create supl thread: %s", strerror(errno));
+          return;
+        }
+        D("ZKW SUPL thread created. tid = 0x%X", tid);
+      }
+#endif
     }
     memset(r->sv_used_in_fix, 0, MAX_SV_PRN);
   } else if ( !memcmp(tok.p, "GSA", 3) ) {
@@ -1005,345 +1364,7 @@ nmea_reader_addc( NmeaReader*  r, int  c )
 }
 
 
-/*****************************************************************/
-/*****************************************************************/
-/*****                                                       *****/
-/*****       C O N N E C T I O N   S T A T E                 *****/
-/*****                                                       *****/
-/*****************************************************************/
-/*****************************************************************/
 
-/* commands sent to the gps thread */
-enum {
-  CMD_QUIT  = 0,
-  CMD_START = 1,
-  CMD_STOP  = 2
-};
-
-
-/* this is the state of our connection to the qemu_gpsd daemon */
-typedef struct {
-  int                     init;
-  int                     fd;
-  GpsCallbacks            callbacks;
-  pthread_t               thread;
-  int                     control[2];
-  char                    device[32];
-  int                     speed;
-} GpsState;
-
-static GpsState  _gps_state[1];
-
-#ifdef SUPL_ENABLED
-static time_t
-utc_time(int week, long tow) {
-  time_t t;
-
-  /* Jan 5/6 midnight 1980 - beginning of GPS time as Unix time */
-  t = 315964801;
-
-  /* soon week will wrap again, uh oh... */
-  /* TS 44.031: GPSTOW, range 0-604799.92, resolution 0.08 sec, 23-bit presentation */
-  t += (1024 + week) * 604800 + tow*0.08;
-
-  return t;
-}
-
-static int
-supl_consume_1(supl_assist_t *ctx) {
-  if (ctx->set & SUPL_RRLP_ASSIST_REFLOC) {
-    D("Reference Location:\n");
-    D("  Lat: %f\n", ctx->pos.lat);
-    D("  Lon: %f\n", ctx->pos.lon);
-    D("  Uncertainty: %d (%.1f m)\n",
-      ctx->pos.uncertainty, 10.0*(pow(1.1, ctx->pos.uncertainty)-1));
-  }
-
-  if (ctx->set & SUPL_RRLP_ASSIST_REFTIME) {
-    time_t t;
-
-    t = utc_time(ctx->time.gps_week, ctx->time.gps_tow);
-
-    D("Reference Time:\n");
-    D("  GPS Week: %ld\n", ctx->time.gps_week);
-    D("  GPS TOW:  %ld %lf\n", ctx->time.gps_tow, ctx->time.gps_tow*0.08);
-    D("  ~ UTC:    %s", ctime(&t));
-  }
-
-  if (ctx->set & SUPL_RRLP_ASSIST_IONO) {
-    D("Ionospheric Model:\n");
-    D("  # a0 a1 a2 b0 b1 b2 b3\n");
-    D("  %g, %g, %g",
-      ctx->iono.a0 * pow(2.0, -30),
-      ctx->iono.a1 * pow(2.0, -27),
-      ctx->iono.a2 * pow(2.0, -24));
-    D(" %g, %g, %g, %g\n",
-      ctx->iono.b0 * pow(2.0, 11),
-      ctx->iono.b1 * pow(2.0, 14),
-      ctx->iono.b2 * pow(2.0, 16),
-      ctx->iono.b3 * pow(2.0, 16));
-  }
-
-  if (ctx->set & SUPL_RRLP_ASSIST_UTC) {
-    D("UTC Model:\n");
-    D("  # a0, a1 delta_tls tot dn\n");
-    D("  %g %g %d %d %d %d %d %d\n",
-      ctx->utc.a0 * pow(2.0, -30),
-      ctx->utc.a1 * pow(2.0, -50),
-      ctx->utc.delta_tls,
-      ctx->utc.tot, ctx->utc.wnt, ctx->utc.wnlsf,
-      ctx->utc.dn, ctx->utc.delta_tlsf);
-  }
-
-  if (ctx->cnt_eph) {
-    int i;
-
-    D("Ephemeris:");
-    D(" %d satellites\n", ctx->cnt_eph);
-    D("  # prn delta_n M0 A_sqrt OMEGA_0 i0 w OMEGA_dot i_dot Cuc Cus Crc Crs Cic Cis");
-    D(" toe IODC toc AF0 AF1 AF2 bits ura health tgd OADA\n");
-
-    for (i = 0; i < ctx->cnt_eph; i++) {
-      struct supl_ephemeris_s *e = &ctx->eph[i];
-
-      D("  %d %g %g %g %g %g %g %g %g",
-        e->prn,
-        e->delta_n * pow(2.0, -43),
-        e->M0 * pow(2.0, -31),
-        e->A_sqrt * pow(2.0, -19),
-        e->OMEGA_0 * pow(2.0, -31),
-        e->i0 * pow(2.0, -31),
-        e->w * pow(2.0, -31),
-        e->OMEGA_dot * pow(2.0, -43),
-        e->i_dot * pow(2.0, -43));
-      D(" %g %g %g %g %g %g",
-        e->Cuc * pow(2.0, -29),
-        e->Cus * pow(2.0, -29),
-        e->Crc * pow(2.0, -5),
-        e->Crs * pow(2.0, -5),
-        e->Cic * pow(2.0, -29),
-        e->Cis * pow(2.0, -29));
-      D(" %g %u %g %g %g %g",
-        e->toe * pow(2.0, 4),
-        e->IODC,
-        e->toc * pow(2.0, 4),
-        e->AF0 * pow(2.0, -31),
-        e->AF1 * pow(2.0, -43),
-        e->AF2 * pow(2.0, -55));
-      D(" %d %d %d %d %d\n",
-        e->bits,
-        e->ura,
-        e->health,
-        e->tgd,
-        e->AODA * 900);
-    }
-  }
-
-  if (ctx->cnt_alm) {
-    int i;
-
-    D("Almanac:");
-    D(" %d satellites\n", ctx->cnt_alm);
-    D("  # prn e toa Ksii OMEGA_dot A_sqrt OMEGA_0 w M0 AF0 AF1\n");
-
-    for (i = 0; i < ctx->cnt_alm; i++) {
-      struct supl_almanac_s *a = &ctx->alm[i];
-
-      D("  %d %g %g %g %g ",
-        a->prn,
-        a->e * pow(2.0, -21),
-        a->toa * pow(2.0, 12),
-        a->Ksii * pow(2.0, -19),
-        a->OMEGA_dot * pow(2.0, -38));
-      D("%g %g %g %g %g %g\n",
-        a->A_sqrt * pow(2.0, -11),
-        a->OMEGA_0 * pow(2.0, -23),
-        a->w * pow(2.0, -23),
-        a->M0 * pow(2.0, -23),
-        a->AF0 * pow(2.0, -20),
-        a->AF1 * pow(2.0, -38));
-    }
-  }
-
-  return 1;
-}
-
-static int
-supl2cas_aid(supl_assist_t *ctx, unsigned char *buff) {
-  D("SUPL 2 Casic Aid.");
-  GPS_FIX_EPHEMERIS_STR uTempGpsEph;
-  AID_INI_STR uTempAidIni;
-  FIX_UTC_STR uTempUtc;
-  FIX_IONO_STR uTempIon;
-
-  int cnt;
-  int length = 0;
-
-  memset(&uTempAidIni, 0, sizeof(AID_INI_STR));
-  supl2cas_ini(ctx, &uTempAidIni);
-  if (uTempAidIni.flags) {
-    length += cas_make_msg(ID_AID_INI,     (int *)(&uTempAidIni),   sizeof(uTempAidIni),      buff + length);
-    D("Pack Casic Ini message.");
-  }
-  for (cnt = 0; cnt < ctx->cnt_eph; cnt++) {
-    if (ctx->set & SUPL_RRLP_ASSIST_REFTIME) {
-      memset(&uTempGpsEph, 0, sizeof(GPS_FIX_EPHEMERIS_STR));
-      supl2cas_eph((unsigned short)ctx->time.gps_week, &ctx->eph[cnt], &uTempGpsEph);
-      if (uTempGpsEph.valid != NAVIGATION_MESSAGE_AVAILABLE)
-        continue;
-      length += cas_make_msg(ID_RXM_GPS_EPH,   (int *)(&uTempGpsEph),  sizeof(GPS_FIX_EPHEMERIS_STR),  buff + length);
-      D("Pack Casic Eph message %d.", cnt);
-    }
-  }
-
-  if (ctx->set & SUPL_RRLP_ASSIST_UTC) {
-    memset(&uTempUtc, 0, sizeof(FIX_UTC_STR));
-    supl2cas_utc(&ctx->utc, &uTempUtc);
-    if (uTempUtc.valid == NAVIGATION_MESSAGE_AVAILABLE) {
-      length += cas_make_msg(ID_RXM_GPS_UTC,   (int *)(&uTempUtc),    sizeof(FIX_UTC_STR),      buff + length);
-      D("Pack Casic GPS_UTC message.");
-    }
-  }
-
-  if (ctx->set & SUPL_RRLP_ASSIST_IONO) {
-    memset(&uTempIon, 0, sizeof(FIX_IONO_STR));
-    supl2cas_iono(&ctx->iono, &uTempIon);
-    if (uTempIon.valid == NAVIGATION_MESSAGE_AVAILABLE) {
-      length += cas_make_msg(ID_RXM_GPS_ION,   (int *)(&uTempIon),    sizeof(FIX_IONO_STR),      buff + length);
-      D("Pack Casic GPS_ION message.");
-    }
-  }
-
-  return length;
-}
-
-static int
-is_supl_needed() {
-  time_t now = time(NULL);
-  if (now - last_supl_time > 3600) {
-    D("Supl needed: %lu vs %lu", now, last_supl_time);
-    return 1;
-  }
-#if SUPL_TEST
-  return 1;
-#else
-  return 0;
-#endif
-}
-
-static unsigned char zkw_supl_thread_start = 0;
-
-static void
-zkw_supl_thread(void *arg) {
-  D("Start supl thread\n");
-
-  GpsState *state = (GpsState *)arg;
-  //unsigned char buff[4096];
-  unsigned char *buff;
-  int len = 0;
-  int err = 0;
-  int fd = state->fd;
-  unsigned int loop_counter = 0;
-  supl_assist_t assist;
-
-  buff = (unsigned char *)calloc(1, 8192);
-  if (buff == NULL) {
-    D("Can not calloc supl buff");
-    return;
-  }
-
-  zkw_supl_thread_start = 1;
-
-  do {
-    D("Enter supl download loop: %d.", loop_counter);
-    loop_counter += 1;
-    // Thread will stop running after n times failed tries.
-    /*
-    if (loop_counter > 120) {
-      break;
-    }
-    */
-
-#if SUPL_TEST
-    if (fd != -1) {
-      char reboot_cmd[] = "$PCAS10,2*1E\r\n";
-      write(fd, reboot_cmd, strlen(reboot_cmd));
-    }
-#endif
-
-    D("Reset supl_ctx");
-    supl_ctx_new(&supl_ctx);
-    D("Request refloc and setid");
-    agpsRilCallbacks->request_refloc(AGPS_RIL_REQUEST_REFLOC_CELLID);
-    agpsRilCallbacks->request_setid(AGPS_RIL_REQUEST_SETID_MSISDN);
-    // usleep(1000 * 1000);
-
-    D("Check cell info");
-    if (supl_ctx.p.set == 0) {
-      D("No cell info present.");
-#if SUPL_TEST
-      supl_set_lte_cell(&supl_ctx, 460, 0, 22548, 193790209, 0);
-#else
-      continue;
-#endif
-    }
-
-    D("Check msisdn");
-    if (supl_ctx.p.msisdn[0] == 0) {
-      D("No msisdn present.");
-      supl_set_msisdn(&supl_ctx, "+8613588889999");
-    }
-
-    D("Download assist data");
-    err = supl_get_assist(&supl_ctx, supl_host, supl_port, &assist);
-    if (err < 0) {
-      D("SUPL protocol error %d\n", err);
-      continue;
-    }
-#if SUPL_TEST
-    supl_consume_1(&assist);
-#endif
-
-    D("Pack aid data");
-    len = supl2cas_aid(&assist, buff);
-    if (len > 0 && fd != -1) {
-      write(fd, buff, len);
-      D("Send CasicAidMessage: %d bytes.", len);
-    }
-    last_supl_time = time(NULL);
-    D("Update last supl time: %lu", last_supl_time);
-#if SUPL_TEST
-    FILE *f = fopen("/data/agpshal.bin", "wb");
-    if (f != NULL) {
-      fwrite(buff, 1, len, f);
-      fclose(f);
-    }
-#endif
-
-    D("Free supl_ctx");
-    supl_ctx_free(&supl_ctx);
-    break;
-  } while(usleep(1000 * 1000) == 0);
-
-  D("Endof download loop");
-  free(buff);
-  zkw_supl_thread_start = 0;
-  D("Endof supl thread");
-}
-
-
-/*
-static void
-supl_start() {
-  GpsState *state = _gps_state;
-  int thread = state->callbacks.create_thread_cb("ZkwSuplThread", zkw_supl_thread, state);
-  if (!thread) {
-    D("Could not create supl thread: %s", strerror(errno));
-    return;
-  }
-}
-*/
-#endif
 
 
 #if GPS_SV_INCLUDE
@@ -1359,9 +1380,6 @@ gps_state_done( GpsState*  s )
   void*  dummy;
   write( s->control[0], &cmd, 1 );
   pthread_join(s->thread, &dummy);
-
-  // tell the supl thread to quit
-  // zkw_supl_thread_start = 0;
 
   // close the control socket pair
   close( s->control[0] );
@@ -1395,8 +1413,9 @@ gps_state_start( GpsState*  s )
   D("%s",gps_idle_off);
 #endif
 
+/*
 #ifdef SUPL_ENABLED
-  if (is_supl_needed() && zkw_supl_thread_start == 0) {
+  if (is_supl_needed() && is_supl_thread_running == 0) {
     int tid = s->callbacks.create_thread_cb("zkw_supl_thread", zkw_supl_thread, s);
     if (!tid) {
       D("Could not create supl thread: %s", strerror(errno));
@@ -1405,6 +1424,7 @@ gps_state_start( GpsState*  s )
     D("ZKW SUPL thread created. tid = 0x%X", tid);
   }
 #endif
+*/
 }
 
 
@@ -1817,7 +1837,7 @@ static struct hw_module_methods_t gps_module_methods = {
 struct hw_module_t HAL_MODULE_INFO_SYM = {
   .tag = HARDWARE_MODULE_TAG,
   .version_major = 3,
-  .version_minor = 27,
+  .version_minor = 28,
   .id            = GPS_HARDWARE_MODULE_ID,
   .name          = "HZZKW GNSS Module",
   .author        = "Jarod Lee",
