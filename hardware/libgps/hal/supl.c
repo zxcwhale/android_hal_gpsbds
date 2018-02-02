@@ -27,6 +27,9 @@
 
 #include "supl.h"
 
+#include <cutils/log.h>
+#define  LOG_TAG  "gps_zkw_supl"
+
 #define PARAM_GSM_CELL_CURRENT 1
 #define PARAM_GSM_CELL_KNOWN 2
 #define PARAM_WCDMA_CELL_CURRENT 4
@@ -40,7 +43,8 @@ static struct supl_debug_s {
   int verbose_rrlp, verbose_supl, debug;
   int sent,recv, out_msg, in_msg;
 } debug;
-#define D(f, ...) printf("%s|<%s>[%d]: " f"\n", __FILE__,  __func__, __LINE__, ##__VA_ARGS__)
+#  define  D(f, ...)   LOGD("%s: line = %d, " f, __func__, __LINE__, ##__VA_ARGS__)
+//#define D(f, ...) printf("%s|<%s>[%d]: " f"\n", __FILE__,  __func__, __LINE__, ##__VA_ARGS__)
 #else
 #define D(f, ...) ((void)0)
 #endif
@@ -1001,6 +1005,9 @@ int EXPORT supl_get_assist(supl_ctx_t *ctx, char *server, char *port, supl_assis
 }
 
 void EXPORT supl_set_msisdn(supl_ctx_t *ctx, const char *msisdn) {
+  if (msisdn == 0) {
+    return;
+  }
   memset(ctx->p.msisdn, 0xff, 8);
   uint64_t num;
   if (sscanf(msisdn, "%llu", &num) != 1) {

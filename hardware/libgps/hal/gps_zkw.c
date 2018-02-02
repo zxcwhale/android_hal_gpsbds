@@ -347,7 +347,7 @@ agps_ril_set_ref_location (const AGpsRefLocation *agps_reflocation, size_t sz_st
 
 void
 agps_ril_set_set_id (AGpsSetIDType type, const char* setid) {
-  D("type = %d, setid = %s", type, setid);
+  D("type = %d, setid = %p, %s", type, setid, setid);
   if (type == AGPS_SETID_TYPE_MSISDN) {
     D("set msisdn");
     supl_set_msisdn(&supl_ctx, setid);
@@ -1291,7 +1291,7 @@ zkw_supl_thread(void *arg) {
     D("Check msisdn");
     if (supl_ctx.p.msisdn[0] == 0) {
       D("No msisdn present.");
-      supl_set_msisdn(&supl_ctx, "+8613588889999");
+      //supl_set_msisdn(&supl_ctx, "+8613588889999");
     }
 
     D("Download assist data");
