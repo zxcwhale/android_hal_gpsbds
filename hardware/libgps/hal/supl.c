@@ -1004,16 +1004,9 @@ int EXPORT supl_get_assist(supl_ctx_t *ctx, char *server, char *port, supl_assis
   return 0;
 }
 
-void EXPORT supl_set_msisdn(supl_ctx_t *ctx, const char *msisdn) {
-  if (msisdn == 0) {
-    return;
-  }
+void EXPORT supl_set_msisdn(supl_ctx_t *ctx, u_int64_t msisdn) {
   memset(ctx->p.msisdn, 0xff, 8);
-  uint64_t num;
-  if (sscanf(msisdn, "%llu", &num) != 1) {
-    num = 31415926536LL;
-  }
-
+  u_int64_t num = msisdn;
   int idx = 8;
   while (num > 0 && idx > 0) {
     int n = num % 100;

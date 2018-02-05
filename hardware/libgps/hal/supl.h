@@ -215,7 +215,7 @@ typedef struct supl_ctx_s {
 int supl_ctx_new(supl_ctx_t *ctx);
 int supl_ctx_free(supl_ctx_t *ctx);
 
-void supl_set_msisdn(supl_ctx_t *ctx, const char *msisdn);
+void supl_set_msisdn(supl_ctx_t *ctx, u_int64_t  msisdn);
 void supl_set_lte_cell(supl_ctx_t *ctx, int mcc, int mns, int tac, int ci, int phys_ci);
 void supl_set_gsm_cell(supl_ctx_t *ctx, int mcc, int mns, int lac, int ci);
 void supl_set_wcdma_cell(supl_ctx_t *ctx, int mcc, int mns, int uc);

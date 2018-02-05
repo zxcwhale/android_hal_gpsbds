@@ -48,7 +48,7 @@
 
 #define GPS_DEBUG  1
 #define NMEA_DEBUG 0
-#define SUPL_TEST 0
+#define SUPL_TEST 1
 #define GPS_SV_INCLUDE 1
 
 typedef enum {
@@ -315,7 +315,7 @@ agps_ril_init (AGpsRilCallbacks *callbacks) {
 void
 agps_ril_set_ref_location (const AGpsRefLocation *agps_reflocation, size_t sz_struct) {
   D("type = %d, mcc = %d, mnc = %d, lac = %d, cid = %d",
-    agps_reflocation->u.cellID.type,
+    agps_reflocation->type,
     agps_reflocation->u.cellID.mcc,
     agps_reflocation->u.cellID.mnc,
     agps_reflocation->u.cellID.lac,
@@ -348,9 +348,15 @@ agps_ril_set_ref_location (const AGpsRefLocation *agps_reflocation, size_t sz_st
 void
 agps_ril_set_set_id (AGpsSetIDType type, const char* setid) {
   D("type = %d, setid = %p, %s", type, setid, setid);
+  if (setid == NULL) {
+    D("Setid is null pointer");
+    return;
+  }
   if (type == AGPS_SETID_TYPE_MSISDN) {
-    D("set msisdn");
-    supl_set_msisdn(&supl_ctx, setid);
+    char *end;
+    unsigned long long msisdn = strtoull(setid, &end, 10);
+    D("set msisdn: %llu", msisdn);
+    supl_set_msisdn(&supl_ctx, msisdn);
   }
 }
 
@@ -1238,21 +1244,14 @@ zkw_supl_thread(void *arg) {
   D("Start supl thread\n");
 
   GpsState *state = (GpsState *)arg;
-  //unsigned char buff[4096];
-  unsigned char *buff;
+  unsigned char buff[4096];
   int len = 0;
   int err = 0;
   int fd = state->fd;
   unsigned int loop_counter = 0;
+  
+  supl_ctx_t ctx;
   supl_assist_t assist;
-
-  buff = (unsigned char *)calloc(1, 8192);
-  if (buff == NULL) {
-    D("Can not calloc supl buff");
-    return;
-  }
-
-  zkw_supl_thread_start = 1;
 
   do {
     D("Enter supl download loop: %d.", loop_counter);
@@ -1271,31 +1270,40 @@ zkw_supl_thread(void *arg) {
     }
 #endif
 
-    D("Reset supl_ctx");
+    D("Reset ctx");
     supl_ctx_new(&supl_ctx);
+    supl_ctx_new(&ctx);
     D("Request refloc and setid");
+#if SUPL_TEST
+    AGpsRefLocation refloc[1];
+    refloc->type = AGPS_REF_LOCATION_TYPE_GSM_CELLID;
+    refloc->u.cellID.mcc = 460;
+    refloc->u.cellID.mnc = 0;
+    refloc->u.cellID.lac = 22548;
+    refloc->u.cellID.cid = 193790209;
+    agps_ril_set_ref_location(refloc, sizeof(AGpsRefLocation));
+    agps_ril_set_set_id(AGPS_SETID_TYPE_MSISDN, "+13588889999");
+#else
     agpsRilCallbacks->request_refloc(AGPS_RIL_REQUEST_REFLOC_CELLID);
     agpsRilCallbacks->request_setid(AGPS_RIL_REQUEST_SETID_MSISDN);
+#endif
     // usleep(1000 * 1000);
 
+    ctx.p = supl_ctx.p;
     D("Check cell info");
-    if (supl_ctx.p.set == 0) {
+    if (ctx.p.set == 0) {
       D("No cell info present.");
-#if SUPL_TEST
-      supl_set_lte_cell(&supl_ctx, 460, 0, 22548, 193790209, 0);
-#else
       continue;
-#endif
     }
 
     D("Check msisdn");
-    if (supl_ctx.p.msisdn[0] == 0) {
+    if (ctx.p.msisdn[0] == 0) {
       D("No msisdn present.");
-      //supl_set_msisdn(&supl_ctx, "+8613588889999");
+      supl_set_msisdn(&ctx, 1333);
     }
 
     D("Download assist data");
-    err = supl_get_assist(&supl_ctx, supl_host, supl_port, &assist);
+    err = supl_get_assist(&ctx, supl_host, supl_port, &assist);
     if (err < 0) {
       D("SUPL protocol error %d\n", err);
       continue;
@@ -1320,13 +1328,12 @@ zkw_supl_thread(void *arg) {
     }
 #endif
 
-    D("Free supl_ctx");
-    supl_ctx_free(&supl_ctx);
+    D("Free ctx");
+    supl_ctx_free(&ctx);
     break;
   } while(usleep(1000 * 1000) == 0);
 
   D("Endof download loop");
-  free(buff);
   zkw_supl_thread_start = 0;
   D("Endof supl thread");
 }
@@ -1397,9 +1404,11 @@ gps_state_start( GpsState*  s )
 
 #ifdef SUPL_ENABLED
   if (is_supl_needed() && zkw_supl_thread_start == 0) {
+    zkw_supl_thread_start = 1;
     int tid = s->callbacks.create_thread_cb("zkw_supl_thread", zkw_supl_thread, s);
     if (!tid) {
       D("Could not create supl thread: %s", strerror(errno));
+      zkw_supl_thread_start = 0;
       return;
     }
     D("ZKW SUPL thread created. tid = 0x%X", tid);
