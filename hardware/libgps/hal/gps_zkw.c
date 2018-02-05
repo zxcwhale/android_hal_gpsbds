@@ -48,7 +48,7 @@
 
 #define GPS_DEBUG  1
 #define NMEA_DEBUG 0
-#define SUPL_TEST 1
+#define SUPL_TEST 0
 #define GPS_SV_INCLUDE 1
 
 typedef enum {
