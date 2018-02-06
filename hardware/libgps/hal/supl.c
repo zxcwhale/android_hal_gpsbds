@@ -633,11 +633,15 @@ static int pdu_make_ulp_rrlp_ack(supl_ctx_t *ctx, supl_ulp_t *pdu, PDU_t *rrlp) 
 int EXPORT supl_collect_rrlp(supl_assist_t *assist, PDU_t *rrlp, struct timeval *t) {
   ControlHeader_t *hdr;
 
+
   if (rrlp->component.present != RRLP_Component_PR_assistanceData) return 0;
   if (!rrlp->component.choice.assistanceData.gps_AssistData) return 0;
 
   hdr = &rrlp->component.choice.assistanceData.gps_AssistData->controlHeader;
+  D("RRLP controlHeader=%p", hdr);
 
+  
+  D("Collect rrlp ref time: %p", hdr->referenceTime);
   if (hdr->referenceTime) {
     assist->set |= SUPL_RRLP_ASSIST_REFTIME;
     assist->time.gps_tow = hdr->referenceTime->gpsTime.gpsTOW23b;
@@ -645,6 +649,7 @@ int EXPORT supl_collect_rrlp(supl_assist_t *assist, PDU_t *rrlp, struct timeval 
     memcpy(&assist->time.stamp, t, sizeof(struct timeval));
   }
 
+  D("Collect rrlp ref location: %p", hdr->refLocation);
   if (hdr->refLocation) {
     OCTET_STRING_t *loc;
 
@@ -679,6 +684,7 @@ int EXPORT supl_collect_rrlp(supl_assist_t *assist, PDU_t *rrlp, struct timeval 
     }
   }
 
+  D("Collect rrlp ref assist: %p", hdr->acquisAssist);
   if (hdr->acquisAssist) {
     int n;
 
@@ -711,6 +717,7 @@ int EXPORT supl_collect_rrlp(supl_assist_t *assist, PDU_t *rrlp, struct timeval 
     }
   }
 
+  D("Collect rrlp almanac: %p", hdr->almanac);
   if (hdr->almanac) {
     int n;
 
@@ -733,6 +740,7 @@ int EXPORT supl_collect_rrlp(supl_assist_t *assist, PDU_t *rrlp, struct timeval 
     }
   }
 
+  D("Collect rrlp navigationModel: %p", hdr->navigationModel);
   if (hdr->navigationModel) {
     UncompressedEphemeris_t *ue;
     int n;
@@ -798,6 +806,7 @@ int EXPORT supl_collect_rrlp(supl_assist_t *assist, PDU_t *rrlp, struct timeval 
     }
   }
 
+  D("Collect iono: %p", hdr->ionosphericModel);
   if (hdr->ionosphericModel) {
     assist->set |= SUPL_RRLP_ASSIST_IONO;
     assist->iono.a0 = hdr->ionosphericModel->alfa0;
@@ -810,6 +819,7 @@ int EXPORT supl_collect_rrlp(supl_assist_t *assist, PDU_t *rrlp, struct timeval 
     assist->iono.b3 = hdr->ionosphericModel->beta3;
   }
 
+  D("Collect utcModel: %p", hdr->utcModel);
   if (hdr->utcModel) {
     assist->set |= SUPL_RRLP_ASSIST_UTC;
     assist->utc.a0 = hdr->utcModel->utcA0;
@@ -822,6 +832,7 @@ int EXPORT supl_collect_rrlp(supl_assist_t *assist, PDU_t *rrlp, struct timeval 
     assist->utc.delta_tlsf = hdr->utcModel->utcDeltaTlsf;
   }
 
+  D("Collect finished");
   return 1;
 }
 
@@ -957,7 +968,7 @@ int EXPORT supl_get_assist(supl_ctx_t *ctx, char *server, char *port, supl_assis
       supl_ulp_free(&ulp);
       return E_SUPL_DECODE_RRLP;
     }
-    D("Decoded rrlp");
+    D("Decoded rrlp=%p", rrlp);
     //xer_fprint(stdout, &asn_DEF_PDU, rrlp);
 
 #ifdef SUPL_DEBUG
@@ -969,9 +980,10 @@ int EXPORT supl_get_assist(supl_ctx_t *ctx, char *server, char *port, supl_assis
 
     /* remember important stuff from it */
 
-    D("Collect rrlp");
+    D("Collect rrlp=%p", rrlp);
     supl_collect_rrlp(assist, rrlp, &t);
 
+    D("Has more rrlp?");
     if (!supl_more_rrlp(rrlp)) {
       asn_DEF_ULP_PDU.free_struct(&asn_DEF_PDU, rrlp, 0);
       D("Break loop");
