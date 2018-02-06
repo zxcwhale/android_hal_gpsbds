@@ -307,6 +307,8 @@ str2float( const char*  p, const char*  end )
 static time_t last_supl_time = 0;
 static supl_ctx_t supl_ctx;
 static AGpsRilCallbacks *agpsRilCallbacks;
+static pthread_mutex_t supl_lock;
+
 void
 agps_ril_init (AGpsRilCallbacks *callbacks) {
   agpsRilCallbacks = callbacks;
@@ -1241,6 +1243,7 @@ static unsigned char zkw_supl_thread_start = 0;
 
 static void
 zkw_supl_thread(void *arg) {
+  pthread_mutex_lock(&supl_lock);
   D("Start supl thread\n");
 
   GpsState *state = (GpsState *)arg;
@@ -1250,7 +1253,6 @@ zkw_supl_thread(void *arg) {
   int fd = state->fd;
   unsigned int loop_counter = 0;
   
-  supl_ctx_t ctx;
   supl_assist_t assist;
 
   do {
@@ -1272,7 +1274,6 @@ zkw_supl_thread(void *arg) {
 
     D("Reset ctx");
     supl_ctx_new(&supl_ctx);
-    supl_ctx_new(&ctx);
     D("Request refloc and setid");
 #if SUPL_TEST
     AGpsRefLocation refloc[1];
@@ -1289,21 +1290,20 @@ zkw_supl_thread(void *arg) {
 #endif
     // usleep(1000 * 1000);
 
-    ctx.p = supl_ctx.p;
     D("Check cell info");
-    if (ctx.p.set == 0) {
+    if (supl_ctx.p.set == 0) {
       D("No cell info present.");
       continue;
     }
 
     D("Check msisdn");
-    if (ctx.p.msisdn[0] == 0) {
+    if (supl_ctx.p.msisdn[0] == 0) {
       D("No msisdn present.");
-      supl_set_msisdn(&ctx, 1333);
+      supl_set_msisdn(&supl_ctx, 1333);
     }
 
     D("Download assist data");
-    err = supl_get_assist(&ctx, supl_host, supl_port, &assist);
+    err = supl_get_assist(&supl_ctx, supl_host, supl_port, &assist);
     if (err < 0) {
       D("SUPL protocol error %d\n", err);
       continue;
@@ -1329,27 +1329,16 @@ zkw_supl_thread(void *arg) {
 #endif
 
     D("Free ctx");
-    supl_ctx_free(&ctx);
+    supl_ctx_free(&supl_ctx);
     break;
   } while(usleep(1000 * 1000) == 0);
 
   D("Endof download loop");
   zkw_supl_thread_start = 0;
-  D("Endof supl thread");
+  pthread_mutex_unlock(&supl_lock);
+  
+  D("Release lock, endof supl thread");
 }
-
-
-/*
-static void
-supl_start() {
-  GpsState *state = _gps_state;
-  int thread = state->callbacks.create_thread_cb("ZkwSuplThread", zkw_supl_thread, state);
-  if (!thread) {
-    D("Could not create supl thread: %s", strerror(errno));
-    return;
-  }
-}
-*/
 #endif
 
 
@@ -1380,6 +1369,10 @@ gps_state_done( GpsState*  s )
   close( s->fd );
   s->fd = -1;
   s->init = 0;
+
+#ifdef SUPL_ENABLED
+  pthread_mutex_destroy(&supl_lock);
+#endif
 }
 
 static void
@@ -1645,6 +1638,13 @@ gps_state_init( GpsState*  state)
 
   // state->callbacks = *callbacks;
 
+#ifdef SUPL_ENABLED
+  if (pthread_mutex_init(&supl_lock, NULL) != 0) {
+    D("Could not create supl lock");
+    goto Fail;
+  }
+#endif
+
   D("gps state initialized");
   return;
 
@@ -1826,7 +1826,7 @@ static struct hw_module_methods_t gps_module_methods = {
 struct hw_module_t HAL_MODULE_INFO_SYM = {
   .tag = HARDWARE_MODULE_TAG,
   .version_major = 3,
-  .version_minor = 27,
+  .version_minor = 28,
   .id            = GPS_HARDWARE_MODULE_ID,
   .name          = "HZZKW GNSS Module",
   .author        = "Jarod Lee",
