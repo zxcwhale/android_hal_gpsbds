@@ -857,6 +857,7 @@ int EXPORT supl_ctx_free(supl_ctx_t *ctx) {
 
 static int supl_more_rrlp(PDU_t *rrlp) {
   long value;
+  D("Check if has more rrlp=%p", rrlp);
 
   return (rrlp->component.present == RRLP_Component_PR_assistanceData &&
           rrlp->component.choice.assistanceData.moreAssDataToBeSent &&
