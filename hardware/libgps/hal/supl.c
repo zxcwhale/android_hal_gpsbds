@@ -633,6 +633,7 @@ static int pdu_make_ulp_rrlp_ack(supl_ctx_t *ctx, supl_ulp_t *pdu, PDU_t *rrlp) 
 int EXPORT supl_collect_rrlp(supl_assist_t *assist, PDU_t *rrlp, struct timeval *t) {
   ControlHeader_t *hdr;
 
+  D("Begin collect rrlp, assist=%p, rrlp=%p, time=%p", assist, rrlp, t);
 
   if (rrlp->component.present != RRLP_Component_PR_assistanceData) return 0;
   if (!rrlp->component.choice.assistanceData.gps_AssistData) return 0;
@@ -980,7 +981,7 @@ int EXPORT supl_get_assist(supl_ctx_t *ctx, char *server, char *port, supl_assis
 
     /* remember important stuff from it */
 
-    D("Collect rrlp=%p", rrlp);
+    D("Collect rrlp, asssit=%p, rrlp=%p, time=%p", assist, rrlp, &t);
     supl_collect_rrlp(assist, rrlp, &t);
 
     D("Has more rrlp?");

@@ -48,7 +48,7 @@
 
 #define GPS_DEBUG  1
 #define NMEA_DEBUG 0
-#define SUPL_TEST 1
+#define SUPL_TEST 0
 #define GPS_SV_INCLUDE 1
 
 typedef enum {
@@ -1302,7 +1302,7 @@ zkw_supl_thread(void *arg) {
       supl_set_msisdn(&supl_ctx, 1333);
     }
 
-    D("Download assist data");
+    D("Download assist data=%p", &assist);
     err = supl_get_assist(&supl_ctx, supl_host, supl_port, &assist);
     if (err < 0) {
       D("SUPL protocol error %d\n", err);
@@ -1826,7 +1826,7 @@ static struct hw_module_methods_t gps_module_methods = {
 struct hw_module_t HAL_MODULE_INFO_SYM = {
   .tag = HARDWARE_MODULE_TAG,
   .version_major = 3,
-  .version_minor = 29,
+  .version_minor = 30,
   .id            = GPS_HARDWARE_MODULE_ID,
   .name          = "HZZKW GNSS Module",
   .author        = "Jarod Lee",
