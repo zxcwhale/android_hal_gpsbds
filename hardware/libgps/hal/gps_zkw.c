@@ -48,7 +48,7 @@
 
 #define GPS_DEBUG  1
 #define NMEA_DEBUG 0
-#define SUPL_TEST 0
+#define SUPL_TEST 1
 #define GPS_SV_INCLUDE 1
 
 typedef enum {
@@ -350,13 +350,14 @@ agps_ril_init (AGpsRilCallbacks *callbacks) {
 void
 agps_ril_set_ref_location (const AGpsRefLocation *agps_reflocation, size_t sz_struct) {
   D("type = %d, mcc = %d, mnc = %d, lac = %d, cid = %d",
-    agps_reflocation->u.cellID.type,
+    agps_reflocation->type,
     agps_reflocation->u.cellID.mcc,
     agps_reflocation->u.cellID.mnc,
     agps_reflocation->u.cellID.lac,
     agps_reflocation->u.cellID.cid
    );
-  if (agps_reflocation->type == AGPS_REF_LOCATION_TYPE_GSM_CELLID) {
+  if (agps_reflocation->type == AGPS_REF_LOCATION_TYPE_GSM_CELLID
+    ||agps_reflocation->type == AGPS_REF_LOCATION_TYPE_UMTS_CELLID) {
     if (agps_reflocation->u.cellID.cid < 65536) {
       supl_set_gsm_cell(&supl_ctx, agps_reflocation->u.cellID.mcc,
                         agps_reflocation->u.cellID.mnc,
@@ -370,11 +371,13 @@ agps_ril_set_ref_location (const AGpsRefLocation *agps_reflocation, size_t sz_st
                         0);
     }
   }
+  /*
   else if (agps_reflocation->type == AGPS_REF_LOCATION_TYPE_UMTS_CELLID) {
     supl_set_wcdma_cell(&supl_ctx, agps_reflocation->u.cellID.mcc,
                         agps_reflocation->u.cellID.mcc,
                         agps_reflocation->u.cellID.cid);
   }
+  */
   else {
     D("No cell info");
   }
@@ -600,6 +603,7 @@ is_supl_needed() {
     D("Supl needed: %lu vs %lu", now, last_supl_time);
     return 1;
   }
+  D("Supl is not timeout");
   return 0;
 }
 
@@ -608,7 +612,6 @@ static unsigned char is_supl_thread_running = 0;
 static void
 zkw_supl_thread(void *arg) {
   D("Start supl thread, arg = 0x%p\n", arg);
-  is_supl_thread_running = 1;
 
   unsigned char *buff;
   int len = 0;
@@ -1116,15 +1119,18 @@ nmea_reader_parse( NmeaReader*  r )
     }
     else {
 #ifdef SUPL_ENABLED
-      D("Unfixed, try to use supl");
+      D("Unfixed, try to use supl, flag = %d", is_supl_thread_running);
       if (is_supl_thread_running == 0 && is_supl_needed()) {
         GpsState *s = _gps_state;
+        is_supl_thread_running = 1;
         int tid = s->callbacks.create_thread_cb("ZKWSuplThread", zkw_supl_thread, s);
         if (!tid) {
           D("Could not create supl thread: %s", strerror(errno));
-          return;
+          is_supl_thread_running = 0;
         }
-        D("ZKW SUPL thread created. tid = 0x%X", tid);
+        else {
+          D("ZKW SUPL thread created. tid = 0x%X", tid);
+        }
       }
 #endif
     }
@@ -1837,7 +1843,7 @@ static struct hw_module_methods_t gps_module_methods = {
 struct hw_module_t HAL_MODULE_INFO_SYM = {
   .tag = HARDWARE_MODULE_TAG,
   .version_major = 3,
-  .version_minor = 28,
+  .version_minor = 33,
   .id            = GPS_HARDWARE_MODULE_ID,
   .name          = "HZZKW GNSS Module",
   .author        = "Jarod Lee",
