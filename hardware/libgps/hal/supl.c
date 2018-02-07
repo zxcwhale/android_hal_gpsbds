@@ -635,14 +635,10 @@ static int pdu_make_ulp_rrlp_ack(supl_ctx_t *ctx, supl_ulp_t *pdu, PDU_t *rrlp) 
 int EXPORT supl_collect_rrlp(supl_assist_t *assist, PDU_t *rrlp, struct timeval *t) {
   ControlHeader_t *hdr;
 
-  D("Begin collect rrlp, assist=%p, rrlp=%p, time=%p", assist, rrlp, t);
-
   if (rrlp->component.present != RRLP_Component_PR_assistanceData) return 0;
   if (!rrlp->component.choice.assistanceData.gps_AssistData) return 0;
 
   hdr = &rrlp->component.choice.assistanceData.gps_AssistData->controlHeader;
-  D("RRLP controlHeader=%p", hdr);
-
   
   D("Collect rrlp ref time: %p", hdr->referenceTime);
   if (hdr->referenceTime) {
@@ -860,11 +856,6 @@ int EXPORT supl_ctx_free(supl_ctx_t *ctx) {
 static int supl_more_rrlp(PDU_t *rrlp) {
   long value;
   D("Check if has more rrlp=%p", rrlp);
-  D("SUPL more rrlp, comp=%p", rrlp->component);
-  D("SUPL more rrlp, assistData=%p", rrlp->component.choice.assistanceData);
-
-  asn_INTEGER2long((INTEGER_t *)rrlp->component.choice.assistanceData.moreAssDataToBeSent, &value);
-  D("More assist data to be sent=%d", value);
 
   return (rrlp->component.present == RRLP_Component_PR_assistanceData &&
           rrlp->component.choice.assistanceData.moreAssDataToBeSent &&
@@ -989,12 +980,11 @@ int EXPORT supl_get_assist(supl_ctx_t *ctx, char *server, char *port, supl_assis
 
     /* remember important stuff from it */
 
-    D("Collect rrlp, asssit=%p, rrlp=%p, time=%p", assist, rrlp, &t);
+    D("Collect rrlp=%p", rrlp);
     supl_collect_rrlp(assist, rrlp, &t);
 
     D("Has more rrlp?");
     if (!supl_more_rrlp(rrlp)) {
-      D("Free rrlp");
       asn_DEF_ULP_PDU.free_struct(&asn_DEF_PDU, rrlp, 0);
       D("Break loop");
       break;

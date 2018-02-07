@@ -323,7 +323,8 @@ agps_ril_set_ref_location (const AGpsRefLocation *agps_reflocation, size_t sz_st
     agps_reflocation->u.cellID.lac,
     agps_reflocation->u.cellID.cid
    );
-  if (agps_reflocation->type == AGPS_REF_LOCATION_TYPE_GSM_CELLID) {
+  if (agps_reflocation->type == AGPS_REF_LOCATION_TYPE_GSM_CELLID || 
+      agps_reflocation->type == AGPS_REF_LOCATION_TYPE_UMTS_CELLID) {
     if (agps_reflocation->u.cellID.cid < 65536) {
       supl_set_gsm_cell(&supl_ctx, agps_reflocation->u.cellID.mcc,
                         agps_reflocation->u.cellID.mnc,
@@ -337,11 +338,13 @@ agps_ril_set_ref_location (const AGpsRefLocation *agps_reflocation, size_t sz_st
                         0);
     }
   }
-  else if (agps_reflocation->type == AGPS_REF_LOCATION_TYPE_UMTS_CELLID) {
+  /* for WCDMA support
+  else if (agps_reflocation->type == AGPS_REF_LOCATION_TYPE_WCDMA_CELLID) {
     supl_set_wcdma_cell(&supl_ctx, agps_reflocation->u.cellID.mcc,
                         agps_reflocation->u.cellID.mcc,
                         agps_reflocation->u.cellID.cid);
   }
+  */
   else {
     D("No cell info");
   }
@@ -1277,13 +1280,16 @@ zkw_supl_thread(void *arg) {
     D("Request refloc and setid");
 #if SUPL_TEST
     AGpsRefLocation refloc[1];
-    refloc->type = AGPS_REF_LOCATION_TYPE_GSM_CELLID;
+    //refloc->type = AGPS_REF_LOCATION_TYPE_GSM_CELLID;
+    refloc->type = AGPS_REF_LOCATION_TYPE_UMTS_CELLID;
     refloc->u.cellID.mcc = 460;
     refloc->u.cellID.mnc = 0;
-    refloc->u.cellID.lac = 22548;
-    refloc->u.cellID.cid = 193790209;
+    refloc->u.cellID.lac = 42362;
+    refloc->u.cellID.cid = 180372735;
+    //refloc->u.cellID.lac = 22548;
+    //refloc->u.cellID.cid = 193790209;
     agps_ril_set_ref_location(refloc, sizeof(AGpsRefLocation));
-    agps_ril_set_set_id(AGPS_SETID_TYPE_MSISDN, "+13588889999");
+    agps_ril_set_set_id(AGPS_SETID_TYPE_MSISDN, "");
 #else
     agpsRilCallbacks->request_refloc(AGPS_RIL_REQUEST_REFLOC_CELLID);
     agpsRilCallbacks->request_setid(AGPS_RIL_REQUEST_SETID_MSISDN);
@@ -1826,7 +1832,7 @@ static struct hw_module_methods_t gps_module_methods = {
 struct hw_module_t HAL_MODULE_INFO_SYM = {
   .tag = HARDWARE_MODULE_TAG,
   .version_major = 3,
-  .version_minor = 32,
+  .version_minor = 33,
   .id            = GPS_HARDWARE_MODULE_ID,
   .name          = "HZZKW GNSS Module",
   .author        = "Jarod Lee",
