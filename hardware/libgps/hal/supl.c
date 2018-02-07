@@ -206,6 +206,7 @@ int EXPORT supl_decode_rrlp(supl_ulp_t *ulp_pdu, PDU_t **ret_rrlp) {
   rrlp_pdu = &ulp->message.choice.msSUPLPOS.posPayLoad.choice.rrlpPayload;
 
   rrlp = calloc(1, sizeof(PDU_t));
+  D("Calloc rrlp: %p", rrlp);
   rval = uper_decode_complete(0, &asn_DEF_PDU, (void **)&rrlp, rrlp_pdu->buf, rrlp_pdu->size);
   switch (rval.code) {
   case RC_OK:
@@ -573,6 +574,7 @@ static int pdu_make_ulp_rrlp_ack(supl_ctx_t *ctx, supl_ulp_t *pdu, PDU_t *rrlp) 
   char buffer[1024];
 
   rrlp_ack = calloc(1, sizeof(PDU_t));
+  D("Calloc rrlp_ack=%p", rrlp_ack);
 
   /* create RRLP assistanceDataAck */
 
