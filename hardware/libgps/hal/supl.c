@@ -860,6 +860,11 @@ int EXPORT supl_ctx_free(supl_ctx_t *ctx) {
 static int supl_more_rrlp(PDU_t *rrlp) {
   long value;
   D("Check if has more rrlp=%p", rrlp);
+  D("SUPL more rrlp, comp=%p", rrlp->component);
+  D("SUPL more rrlp, assistData=%p", rrlp->component.choice.assistanceData);
+
+  asn_INTEGER2long((INTEGER_t *)rrlp->component.choice.assistanceData.moreAssDataToBeSent, &value);
+  D("More assist data to be sent=%d", value);
 
   return (rrlp->component.present == RRLP_Component_PR_assistanceData &&
           rrlp->component.choice.assistanceData.moreAssDataToBeSent &&
@@ -989,6 +994,7 @@ int EXPORT supl_get_assist(supl_ctx_t *ctx, char *server, char *port, supl_assis
 
     D("Has more rrlp?");
     if (!supl_more_rrlp(rrlp)) {
+      D("Free rrlp");
       asn_DEF_ULP_PDU.free_struct(&asn_DEF_PDU, rrlp, 0);
       D("Break loop");
       break;
