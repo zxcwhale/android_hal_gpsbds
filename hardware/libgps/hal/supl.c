@@ -840,12 +840,17 @@ int EXPORT supl_ctx_free(supl_ctx_t *ctx) {
 }
 
 static int supl_more_rrlp(PDU_t *rrlp) {
+/*
   long value;
 
   return (rrlp->component.present == RRLP_Component_PR_assistanceData &&
           rrlp->component.choice.assistanceData.moreAssDataToBeSent &&
           asn_INTEGER2long((INTEGER_t *)rrlp->component.choice.assistanceData.moreAssDataToBeSent, &value) == 0 &&
           value == MoreAssDataToBeSent_moreMessagesOnTheWay);
+*/
+  return (rrlp->component.present == RRLP_Component_PR_assistanceData &&
+          rrlp->component.choice.assistanceData.moreAssDataToBeSent &&
+          *rrlp->component.choice.assistanceData.moreAssDataToBeSent  == MoreAssDataToBeSent_moreMessagesOnTheWay);
 }
 
 int EXPORT supl_get_assist(supl_ctx_t *ctx, char *server, char *port, supl_assist_t *assist) {
