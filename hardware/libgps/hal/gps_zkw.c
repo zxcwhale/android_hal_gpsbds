@@ -48,7 +48,7 @@
 
 #define GPS_DEBUG  1
 #define NMEA_DEBUG 0
-#define SUPL_TEST 0
+#define SUPL_TEST 1
 #define GPS_SV_INCLUDE 1
 
 typedef enum {
@@ -323,6 +323,7 @@ agps_ril_set_ref_location (const AGpsRefLocation *agps_reflocation, size_t sz_st
     agps_reflocation->u.cellID.lac,
     agps_reflocation->u.cellID.cid
    );
+  //if (agps_reflocation->type == AGPS_REF_LOCATION_TYPE_GSM_CELLID ) {
   if (agps_reflocation->type == AGPS_REF_LOCATION_TYPE_GSM_CELLID || 
       agps_reflocation->type == AGPS_REF_LOCATION_TYPE_UMTS_CELLID) {
     if (agps_reflocation->u.cellID.cid < 65536) {
@@ -338,8 +339,8 @@ agps_ril_set_ref_location (const AGpsRefLocation *agps_reflocation, size_t sz_st
                         0);
     }
   }
-  /* for WCDMA support
-  else if (agps_reflocation->type == AGPS_REF_LOCATION_TYPE_WCDMA_CELLID) {
+  /*
+  else if (agps_reflocation->type == AGPS_REF_LOCATION_TYPE_UMTS_CELLID) {
     supl_set_wcdma_cell(&supl_ctx, agps_reflocation->u.cellID.mcc,
                         agps_reflocation->u.cellID.mcc,
                         agps_reflocation->u.cellID.cid);
@@ -1832,7 +1833,7 @@ static struct hw_module_methods_t gps_module_methods = {
 struct hw_module_t HAL_MODULE_INFO_SYM = {
   .tag = HARDWARE_MODULE_TAG,
   .version_major = 3,
-  .version_minor = 33,
+  .version_minor = 35,
   .id            = GPS_HARDWARE_MODULE_ID,
   .name          = "HZZKW GNSS Module",
   .author        = "Jarod Lee",

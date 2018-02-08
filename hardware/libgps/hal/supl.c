@@ -44,7 +44,6 @@ static struct supl_debug_s {
   int sent,recv, out_msg, in_msg;
 } debug;
 #  define  D(f, ...)   LOGD("%s: line = %d, " f, __func__, __LINE__, ##__VA_ARGS__)
-//#define D(f, ...) printf("%s|<%s>[%d]: " f"\n", __FILE__,  __func__, __LINE__, ##__VA_ARGS__)
 #else
 #define D(f, ...) ((void)0)
 #endif
@@ -854,13 +853,21 @@ int EXPORT supl_ctx_free(supl_ctx_t *ctx) {
 }
 
 static int supl_more_rrlp(PDU_t *rrlp) {
-  long value;
-  D("Check if has more rrlp=%p", rrlp);
+  //long value;
+  D("Check if has more rrlp");
+  if ( rrlp->component.choice.assistanceData.moreAssDataToBeSent ) {
+    D("Check more assist data to be sent: %d", *rrlp->component.choice.assistanceData.moreAssDataToBeSent); 
+  }
 
+  /*
   return (rrlp->component.present == RRLP_Component_PR_assistanceData &&
           rrlp->component.choice.assistanceData.moreAssDataToBeSent &&
           asn_INTEGER2long((INTEGER_t *)rrlp->component.choice.assistanceData.moreAssDataToBeSent, &value) == 0 &&
           value == MoreAssDataToBeSent_moreMessagesOnTheWay);
+  */
+  return (rrlp->component.present == RRLP_Component_PR_assistanceData &&
+          rrlp->component.choice.assistanceData.moreAssDataToBeSent &&
+          *rrlp->component.choice.assistanceData.moreAssDataToBeSent == MoreAssDataToBeSent_moreMessagesOnTheWay);
 }
 
 int EXPORT supl_get_assist(supl_ctx_t *ctx, char *server, char *port, supl_assist_t *assist) {
