@@ -1141,7 +1141,21 @@ nmea_reader_parse( NmeaReader*  r )
         } else if ( !memcmp(tok.p, "GSA", 3) ) {
 #if GPS_SV_INCLUDE
 
-                Token  tok_fixStatus   = nmea_tokenizer_get(tzer, 2);
+                Token  tok_fixStatus    = nmea_tokenizer_get(tzer, 2);
+                Token  tok_svs          = nmea_tokenizer_get(tzer, 18);
+                switch(tok_svs.p[0]) {
+                case '1':
+                        sv_type = GPS_SV;
+                        break;
+                case '2':
+                        sv_type = GLONASS_SV;
+                        break;
+                case '4':
+                        sv_type = BDS_SV;
+                        break;
+                default:
+                        break;
+                }
                 int i;
 
                 if (tok_fixStatus.p[0] != '\0' && tok_fixStatus.p[0] != '1') {
