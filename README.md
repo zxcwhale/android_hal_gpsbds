@@ -1,4 +1,3 @@
-[toc]
 # Android HAL driver for GPS and BDS
 This is an GNSS HAL driver project for both GPS and BDS satellites system.
 And use SUPL2.0 for AGPS.
