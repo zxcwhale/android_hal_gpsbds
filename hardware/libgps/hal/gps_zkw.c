@@ -40,7 +40,7 @@
 #include <hardware/gps.h>
 #include <cutils/properties.h>
 
-#ifdef SUPL_ENABLED
+#if SUPL_ENABLED
 #include "supl.h"
 #include "casaid.h"
 #endif
@@ -331,7 +331,7 @@ str2float( const char*  p, const char*  end )
         return strtod( temp, NULL );
 }
 
-#ifdef SUPL_ENABLED
+#if SUPL_ENABLED
 /*****************************************************************/
 /*****************************************************************/
 /*****                                                       *****/
@@ -404,7 +404,7 @@ static const AGpsRilInterface zkwAGpsRilInterface = {
 
 #endif
 
-#ifdef SUPL_ENABLED
+#if SUPL_ENABLED
 /*****************************************************************/
 /*****************************************************************/
 /*****                                                       *****/
@@ -1121,7 +1121,7 @@ nmea_reader_parse( NmeaReader*  r )
                         nmea_reader_update_altitude(r, tok_altitude, tok_altitudeUnits);
                 }
                 else {
-#ifdef SUPL_ENABLED
+#if SUPL_ENABLED
                         D("Unfixed, try to use supl, flag = %d", is_supl_thread_running);
                         if (is_supl_thread_running == 0 && is_supl_needed()) {
                                 GpsState *s = _gps_state;
@@ -1437,7 +1437,7 @@ gps_state_start( GpsState*  s )
 #endif
 
         /*
-        #ifdef SUPL_ENABLED
+        #if SUPL_ENABLED
           if (is_supl_needed() && is_supl_thread_running == 0) {
             int tid = s->callbacks.create_thread_cb("zkw_supl_thread", zkw_supl_thread, s);
             if (!tid) {
