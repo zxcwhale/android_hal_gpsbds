@@ -49,7 +49,7 @@ void supl2cas_ini(supl_assist_t *ctx, AID_INI_STR *cas_ini)
 
         if (ctx->set & SUPL_RRLP_ASSIST_REFTIME) {
                 cas_ini->tow	  = ctx->time.gps_tow * 0.08;
-                cas_ini->wn			= ctx->time.gps_week + 1024;
+                cas_ini->wn			= ctx->time.gps_week + 2048;
                 cas_ini->flags  |= 0x02;
         }
 
