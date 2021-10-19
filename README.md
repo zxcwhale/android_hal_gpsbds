@@ -1,9 +1,14 @@
 # Android HAL driver for GPS and BDS
 This is an GNSS HAL driver project for both GPS and BDS satellites system.
+
 And use SUPL2.0 for AGPS.
-This project is for Android4.x 5.x and 6.x.
+
+This project is for **Android4**, **Android5** or **Android6**.
+
 For **Android7** or **Anroid8**, please use [android7_gnss_hal_driver](https://github.com/zxcwhale/android7_gnss_hal_driver).
+
 For **Android9** or above, please use[android9_gnss_hal_driver](https://github.com/zxcwhale/android9_gnss_hal_driver).
+
 
 ## Basics
 1. This project is about to make a gps.xxxx.so lib, which loaded by android system at the booting time.
